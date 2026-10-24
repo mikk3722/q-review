@@ -62,8 +62,8 @@ For a release: raise the number, add to the changelog, push, then `git tag v0.2.
 ## Building
 
 Push a tag (`git tag v0.1.0 && git push --tags`) – GitHub Actions builds, tests and publishes
-the Windows ZIP and the macOS DMG (same setup as Wing Theatre Controller). Every push to `main` builds and tests
-too; the files are under *Actions → the run → Artifacts*.
+the Windows ZIP and the macOS DMG (same setup as Wing Theatre Controller). Ordinary pushes do not build;
+*Actions → Build Q-Review → Run workflow* builds and tests without publishing.
 
 Running from source:
 

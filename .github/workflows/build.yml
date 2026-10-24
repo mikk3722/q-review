@@ -1,13 +1,12 @@
 name: Build Q-Review
 
-# Every push builds and tests. A tag (v0.1.0 …) also publishes a release
-# with the Windows ZIP and the macOS DMG – same setup as Wing Theatre Controller.
+# Builds only when asked: a release/tag (v0.2.0 …) builds, tests and publishes the Windows ZIP and
+# the macOS DMG; "Run workflow" under Actions builds and tests without publishing.
+# Ordinary pushes do not build – testing happens from source on the Mac first.
 on:
   push:
-    branches: [main]
     tags:
       - 'v*'
-  pull_request:
   workflow_dispatch:
 
 jobs:
