@@ -1,0 +1,233 @@
+name: Build Q-Review
+
+# Every push builds and tests. A tag (v0.1.0 …) also publishes a release
+# with the Windows ZIP and the macOS DMG – same setup as Wing Theatre Controller.
+on:
+  push:
+    branches: [main]
+    tags:
+      - 'v*'
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+
+  build-windows:
+    runs-on: windows-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Self-test (source)
+        timeout-minutes: 10
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python q_review.py --selftest selftest-output
+
+      - name: Build app
+        run: |
+          "${{ github.ref_name }} (build ${{ github.run_number }}, $(Get-Date -Format 'yyyy-MM-dd'))" | Out-File -FilePath version.txt -Encoding utf8
+          pyinstaller `
+            --noconfirm `
+            --name "Q-Review" `
+            --windowed `
+            --icon "assets/icon.ico" `
+            --add-data "assets;assets" `
+            --add-data "version.txt;." `
+            --collect-all imageio_ffmpeg `
+            q_review.py
+
+      - name: Self-test (built app)
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $p = Start-Process -FilePath "dist\Q-Review\Q-Review.exe" -ArgumentList "--selftest","exe-selftest" -Wait -PassThru
+          Get-Content exe-selftest\selftest.txt
+          if ($p.ExitCode -ne 0) { throw "Self-test of the built app failed ($($p.ExitCode))" }
+
+      - name: Create ZIP
+        run: |
+          Compress-Archive `
+            -Path "dist\Q-Review" `
+            -DestinationPath "Q-Review-windows.zip"
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-windows
+          path: |
+            selftest-output
+            exe-selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Q-Review-windows
+          path: Q-Review-windows.zip
+
+  build-macos:
+    runs-on: macos-latest
+    timeout-minutes: 40
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Python dependencies
+        run: pip install -r requirements.txt pyinstaller
+
+      - name: Self-test (source)
+        timeout-minutes: 10
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: python q_review.py --selftest selftest-output
+
+      - name: Build app
+        run: |
+          echo "${{ github.ref_name }} (build ${{ github.run_number }}, $(date +%Y-%m-%d))" > version.txt
+          pyinstaller \
+            --noconfirm \
+            --name "Q-Review" \
+            --windowed \
+            --icon "assets/icon.png" \
+            --add-data "assets:assets" \
+            --add-data "version.txt:." \
+            --collect-all imageio_ffmpeg \
+            --osx-bundle-identifier dk.mikkelpeterlarsen.qreview \
+            q_review.py
+          PLIST="dist/Q-Review.app/Contents/Info.plist"
+          VER="${GITHUB_REF_NAME#v}"
+          plutil -replace CFBundleShortVersionString -string "$VER" "$PLIST" || true
+          plutil -replace CFBundleVersion -string "${{ github.run_number }}" "$PLIST" || true
+
+      # Same signing as Wing Theatre Controller: with the Apple Developer secrets
+      # (MACOS_CERT_P12, MACOS_CERT_PASSWORD, APPLE_ID, APPLE_APP_PASSWORD, APPLE_TEAM_ID)
+      # the app is signed and notarised; without them it is signed ad hoc.
+      - name: Import Developer ID certificate
+        env:
+          MACOS_CERT_P12:      ${{ secrets.MACOS_CERT_P12 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+        run: |
+          if [ -z "$MACOS_CERT_P12" ]; then
+            echo "No MACOS_CERT_P12 secret -- ad-hoc signing will be used."
+            exit 0
+          fi
+          KC="$RUNNER_TEMP/signing.keychain-db"
+          KC_PASS="$(uuidgen)"
+          echo "$MACOS_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KC_PASS" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KC_PASS" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MACOS_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          rm -f "$RUNNER_TEMP/cert.p12"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KC_PASS" "$KC" >/dev/null
+          security list-keychains -d user -s "$KC" $(security list-keychains -d user | tr -d '"')
+          IDENTITY=$(security find-identity -v -p codesigning "$KC" | grep "Developer ID Application" | head -1 | awk '{print $2}')
+          if [ -z "$IDENTITY" ]; then
+            echo "::error::No 'Developer ID Application' certificate found in MACOS_CERT_P12"
+            exit 1
+          fi
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+          echo "SIGN_KEYCHAIN=$KC" >> "$GITHUB_ENV"
+
+      - name: Sign app
+        run: |
+          APP="dist/Q-Review.app"
+          if [ -z "$SIGN_IDENTITY" ]; then
+            codesign --force --deep --sign - "$APP"
+            codesign --verify --verbose "$APP"
+            exit 0
+          fi
+          SIGN=(codesign --force --timestamp --options runtime --sign "$SIGN_IDENTITY")
+          while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q "Mach-O"; then
+              "${SIGN[@]}" --entitlements entitlements.plist "$f"
+            fi
+          done < <(find "$APP/Contents" -type f -print0)
+          find "$APP/Contents" -type d -name "*.framework" \
+            | awk '{ print length, $0 }' | sort -rn | cut -d' ' -f2- \
+            | while IFS= read -r fw; do "${SIGN[@]}" "$fw"; done
+          "${SIGN[@]}" --entitlements entitlements.plist "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+
+      - name: Notarise app
+        env:
+          APPLE_ID:           ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID:      ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$SIGN_IDENTITY" ] || [ -z "$APPLE_ID" ]; then
+            echo "Not notarising (no Developer ID certificate or Apple ID secrets)."
+            exit 0
+          fi
+          APP="dist/Q-Review.app"
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/app.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/app.zip" \
+            --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+            --wait --timeout 30m
+          xcrun stapler staple "$APP"
+          xcrun stapler validate "$APP"
+
+      - name: Self-test (built app)
+        timeout-minutes: 10
+        env:
+          QT_QPA_PLATFORM: offscreen
+        run: |
+          "dist/Q-Review.app/Contents/MacOS/Q-Review" --selftest "$PWD/exe-selftest"
+
+      - name: Create DMG
+        run: |
+          hdiutil create -volname "Q-Review" -srcfolder "dist/Q-Review.app" -ov -format UDZO "Q-Review-macos.dmg"
+          if [ -n "$SIGN_IDENTITY" ]; then
+            codesign --force --timestamp --sign "$SIGN_IDENTITY" "Q-Review-macos.dmg"
+          fi
+
+      - name: Remove signing keychain
+        if: always()
+        run: |
+          if [ -n "$SIGN_KEYCHAIN" ]; then security delete-keychain "$SIGN_KEYCHAIN" || true; fi
+
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: selftest-macos
+          path: |
+            selftest-output
+            exe-selftest
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Q-Review-macos
+          path: Q-Review-macos.dmg
+
+  release:
+    runs-on: ubuntu-latest
+    needs: [build-windows, build-macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Q-Review ${{ github.ref_name }}
+          body: |
+            ## Q-Review ${{ github.ref_name }}
+
+            | Platform | Download |
+            |---|---|
+            | Windows | Q-Review-windows.zip – unzip and run Q-Review.exe |
+            | macOS | Q-Review-macos.dmg |
+          files: |
+            Q-Review-windows/*.zip
+            Q-Review-macos/*.dmg

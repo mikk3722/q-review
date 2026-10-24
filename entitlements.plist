@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Entitlements for the hardened runtime (required for Apple notarisation).
+  Python/PyInstaller apps need these two: Python's ctypes creates small
+  executable trampolines at runtime; the bundled Python/Qt libraries
+  are loaded by the PyInstaller bootloader. Nothing else is requested:
+  no sandbox, camera, microphone etc.
+-->
+<plist version="1.0">
+<dict>
+    <key>com.apple.security.cs.allow-unsigned-executable-memory</key>
+    <true/>
+    <key>com.apple.security.cs.disable-library-validation</key>
+    <true/>
+</dict>
+</plist>
