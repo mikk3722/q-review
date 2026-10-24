@@ -21,6 +21,7 @@ LANE_H = 24
 TRACK_PAD = 3
 EDGE = 6
 MIN_DUR = 0.2
+END_PAD = 14        # pixels shown after the end of the video
 
 BG = QColor("#1b1b1d")
 HEADER_BG = QColor("#232326")
@@ -69,7 +70,9 @@ class Timeline(QWidget):
     def total(self) -> float:
         p = self.project
         ends = [c.end for c in p.comments]
-        return max([p.video_duration, 1.0] + ends)
+        if p.video_duration > 0:
+            return max([p.video_duration] + ends)
+        return max([1.0] + ends)
 
     def visible_seconds(self) -> float:
         return max(0.1, (self.width() - HEADER_W) / self.pps)
@@ -81,11 +84,11 @@ class Timeline(QWidget):
         return self.offset + (x - HEADER_W) / self.pps
 
     def clamp_offset(self):
-        max_off = max(0.0, self.total() + 2.0 - self.visible_seconds())
+        max_off = max(0.0, self.total() + END_PAD / self.pps - self.visible_seconds())
         self.offset = min(max(0.0, self.offset), max_off)
 
     def fit(self):
-        avail = max(50, self.width() - HEADER_W - 16)
+        avail = max(50, self.width() - HEADER_W - END_PAD)
         self.pps = max(0.02, avail / max(1.0, self.total()))
         self.offset = 0.0
         self.update()
@@ -211,7 +214,15 @@ class Timeline(QWidget):
         if dur > 0:
             xe = self.x_of(dur)
             if xe < W:
-                p.fillRect(QRectF(max(HEADER_W, xe), RULER_H, W - max(HEADER_W, xe), H - RULER_H), QColor(0, 0, 0, 120))
+                # After the end of the video: clearly empty
+                x0 = max(HEADER_W, xe)
+                p.fillRect(QRectF(x0, 0, W - x0, H), QColor("#0b0b0c"))
+                p.setPen(QPen(QColor(255, 255, 255, 60), 1))
+                p.drawLine(QPointF(xe, 0), QPointF(xe, H))
+                if W - x0 > 34:
+                    p.setPen(TEXT_DIM)
+                    p.setFont(self._font)
+                    p.drawText(QRectF(x0 + 6, 0, W - x0 - 6, RULER_H), Qt.AlignmentFlag.AlignVCenter, "End")
         tin, tout = proj.trim_in, proj.effective_out()
         shade = QColor(0, 0, 0, 150)
         if tin > 0:
@@ -575,7 +586,7 @@ class TimelinePanel(QWidget):
         t = self.timeline
         self._syncing = True
         vis = t.visible_seconds()
-        maximum = max(0.0, t.total() + 2.0 - vis)
+        maximum = max(0.0, t.total() + END_PAD / t.pps - vis)
         self.bar.setRange(0, int(maximum * 100))
         self.bar.setPageStep(max(1, int(vis * 100)))
         self.bar.setSingleStep(max(1, int(vis * 10)))
