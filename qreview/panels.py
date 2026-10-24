@@ -89,12 +89,17 @@ class CommentInput(QPlainTextEdit):
     submitted = pyqtSignal(str)
     started = pyqtSignal()
     cancelled = pyqtSignal()
+    focusChanged = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
-        self.setPlaceholderText("Write a comment …  (Enter adds it, Shift+Enter = new line, Esc = cancel)")
+        self.setObjectName("composerInput")
+        self.setPlaceholderText("Write a comment and press Enter …")
         self.setTabChangesFocus(True)
-        self.setFixedHeight(64)
+        self.setFixedHeight(78)
+        f = self.font()
+        f.setPointSizeF(f.pointSizeF() * 1.25)
+        self.setFont(f)
         self.textChanged.connect(self._changed)
         self._was_empty = True
 
@@ -103,6 +108,14 @@ class CommentInput(QPlainTextEdit):
         if self._was_empty and not empty:
             self.started.emit()
         self._was_empty = empty
+
+    def focusInEvent(self, e):
+        super().focusInEvent(e)
+        self.focusChanged.emit(True)
+
+    def focusOutEvent(self, e):
+        super().focusOutEvent(e)
+        self.focusChanged.emit(False)
 
     def keyPressEvent(self, e: QKeyEvent):
         if e.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and not (e.modifiers() & Qt.KeyboardModifier.ShiftModifier):

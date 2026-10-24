@@ -194,22 +194,40 @@ class MainWindow(QMainWindow):
         lv.addLayout(list_head)
         self.list = CommentList(self)
         lv.addWidget(self.list, 1)
+        # The writing card: stands out in the colour of the active profile
+        self.composer = QFrame()
+        self.composer.setObjectName("composer")
+        cl = QVBoxLayout(self.composer)
+        cl.setContentsMargins(12, 10, 12, 8)
+        cl.setSpacing(6)
+        top = QHBoxLayout()
+        self.composer_title = QLabel()
+        self.composer_title.setTextFormat(Qt.TextFormat.RichText)
+        top.addWidget(self.composer_title)
+        top.addStretch()
+        self.input_time = QLabel()
+        self.input_time.setStyleSheet("color:#ffd60a; font-family: Menlo, Consolas, monospace; font-size:15px; font-weight:600;")
+        self.input_time.setToolTip("The comment is placed here. The time is held from when you start writing.")
+        top.addWidget(self.input_time)
+        cl.addLayout(top)
         self.input = CommentInput()
         self.input.submitted.connect(self._submit_comment)
         self.input.started.connect(self._input_started)
         self.input.cancelled.connect(self._input_cancelled)
-        lv.addWidget(self.input)
+        self.input.focusChanged.connect(lambda _f: self._style_composer())
+        cl.addWidget(self.input)
         row = QHBoxLayout()
-        self.input_time = QLabel()
-        self.input_time.setStyleSheet("color:#9a9aa0;")
-        row.addWidget(self.input_time)
+        hint = QLabel("Enter adds · Shift+Enter new line · Esc cancels")
+        hint.setStyleSheet("color:#8e8e93; font-size:11px;")
+        row.addWidget(hint)
         row.addStretch()
         self.pause_typing = QCheckBox("Pause while writing")
         self.pause_typing.setChecked(self.settings.value("pauseWhileTyping", True, bool))
         self.pause_typing.toggled.connect(lambda on: self.settings.setValue("pauseWhileTyping", on))
         self.pause_typing.setFocusPolicy(Qt.FocusPolicy.NoFocus)
         row.addWidget(self.pause_typing)
-        lv.addLayout(row)
+        cl.addLayout(row)
+        lv.addWidget(self.composer)
 
 
         # Centre: video + transport
@@ -450,6 +468,7 @@ class MainWindow(QMainWindow):
     def set_active_profile(self, pid: str):
         self.active_profile_id = pid
         self._rebuild_chips()
+        self._style_composer()
         self.timeline.update()
 
     def begin_change(self) -> dict:
@@ -601,6 +620,7 @@ class MainWindow(QMainWindow):
         if self.selected_id and p.comment(self.selected_id) is None:
             self.selected_id = None
         self._rebuild_chips()
+        self._style_composer()
         self.list.rebuild()
         n = len(p.comments)
         self.count_label.setText(f"Comments ({n})")
@@ -673,7 +693,7 @@ class MainWindow(QMainWindow):
         d = p.video_duration
         self.time_label.setText(f"{fmt_precise(self._time)} / {fmt_precise(d)}")
         if self._input_time is None:
-            self.input_time.setText(f"New comment at {fmt_short(self._time)}")
+            self.input_time.setText(fmt_short(self._time))
         active = {c.id for c in p.comments_at(self._time, only_video=False)}
         if active != self.active_ids:
             new = active - self.active_ids
@@ -836,7 +856,8 @@ class MainWindow(QMainWindow):
 
     def _input_started(self):
         self._input_time = self._time
-        self.input_time.setText(f"New comment at {fmt_short(self._time)} (held)")
+        self.input_time.setText(f"🔒 {fmt_short(self._time)}")
+        self._style_composer()
         if self.pause_typing.isChecked():
             self._resume_after_input = self.pause()
 
@@ -855,8 +876,27 @@ class MainWindow(QMainWindow):
     def _input_cancelled(self):
         self._input_done()
 
+    def _style_composer(self):
+        prof = self.project.profile(self.active_profile_id)
+        color = QColor(prof.color if prof else "#0a84ff")
+        name = prof.name if prof else ""
+        active = self.input.hasFocus() or self._input_time is not None
+        border = color.name() if active else color.darker(150).name()
+        bg = "#2b2b30" if active else "#252529"
+        glow = f"{color.red()},{color.green()},{color.blue()}"
+        self.composer.setStyleSheet(
+            f"QFrame#composer {{ background:{bg}; border:2px solid {border}; border-radius:10px; }}"
+            f"QFrame#composer QLabel, QFrame#composer QCheckBox {{ background:transparent; border:none; }}"
+            f"QPlainTextEdit#composerInput {{ background:rgba({glow},{0.10 if active else 0.05}); border:1px solid "
+            f"rgba({glow},{0.55 if active else 0.25}); border-radius:7px; padding:4px; color:#ffffff; }}")
+        self.composer_title.setText(
+            f"<span style='color:{color.name()}; font-size:15px;'>●</span>"
+            f"&nbsp;<b style='color:#f2f2f7; font-size:14px;'>New comment</b>"
+            f"<span style='color:#9a9aa0; font-size:13px;'>&nbsp;·&nbsp;{name}</span>")
+
     def _input_done(self):
         self._input_time = None
+        QTimer.singleShot(0, self._style_composer)
         if self._resume_after_input:
             self._resume_after_input = False
             self.play()

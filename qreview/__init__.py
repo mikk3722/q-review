@@ -4,7 +4,7 @@ import sys as _sys
 
 # The version. Raise it for each release and add a line to CHANGELOG.md;
 # a tag with the same number (git tag v0.2.0) makes GitHub publish the release.
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 
 
 def _read_build() -> str:
