@@ -27,6 +27,16 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller pillow
 
+      - name: Check the version
+        shell: bash
+        run: |
+          VER=$(python -c "import qreview; print(qreview.__version__)")
+          echo "Q-Review $VER"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$VER" ]]; then
+            echo "::error::The tag $GITHUB_REF_NAME does not match __version__ = $VER in qreview/__init__.py"
+            exit 1
+          fi
+
       - name: Self-test (source)
         timeout-minutes: 10
         env:
@@ -35,7 +45,7 @@ jobs:
 
       - name: Build app
         run: |
-          "${{ github.ref_name }} (build ${{ github.run_number }}, $(Get-Date -Format 'yyyy-MM-dd'))" | Out-File -FilePath version.txt -Encoding utf8
+          "build ${{ github.run_number }}, $(Get-Date -Format 'yyyy-MM-dd')" | Out-File -FilePath version.txt -Encoding utf8
           pyinstaller `
             --noconfirm `
             --name "Q-Review" `
@@ -104,6 +114,16 @@ jobs:
       - name: Install Python dependencies
         run: pip install -r requirements.txt pyinstaller pillow
 
+      - name: Check the version
+        shell: bash
+        run: |
+          VER=$(python -c "import qreview; print(qreview.__version__)")
+          echo "Q-Review $VER"
+          if [[ "$GITHUB_REF" == refs/tags/v* && "${GITHUB_REF_NAME#v}" != "$VER" ]]; then
+            echo "::error::The tag $GITHUB_REF_NAME does not match __version__ = $VER in qreview/__init__.py"
+            exit 1
+          fi
+
       - name: Self-test (source)
         timeout-minutes: 10
         env:
@@ -112,7 +132,7 @@ jobs:
 
       - name: Build app
         run: |
-          echo "${{ github.ref_name }} (build ${{ github.run_number }}, $(date +%Y-%m-%d))" > version.txt
+          echo "build ${{ github.run_number }}, $(date +%Y-%m-%d)" > version.txt
           pyinstaller \
             --noconfirm \
             --name "Q-Review" \
@@ -124,7 +144,7 @@ jobs:
             --osx-bundle-identifier dk.mikkelpeterlarsen.qreview \
             q_review.py
           PLIST="dist/Q-Review.app/Contents/Info.plist"
-          VER="${GITHUB_REF_NAME#v}"
+          VER=$(python -c "import qreview; print(qreview.__version__)")
           plutil -replace CFBundleShortVersionString -string "$VER" "$PLIST" || true
           plutil -replace CFBundleVersion -string "${{ github.run_number }}" "$PLIST" || true
 
@@ -257,6 +277,8 @@ jobs:
           name: Q-Review ${{ github.ref_name }}
           body: |
             ## Q-Review ${{ github.ref_name }}
+
+            See CHANGELOG.md for what is new.
 
             | Platform | Download |
             |---|---|

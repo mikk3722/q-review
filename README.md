@@ -54,6 +54,11 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 See [Releases](../../releases). Windows: unzip `Q-Review-windows.zip` and run `Q-Review.exe` (FFmpeg is included).
 
+## Versions
+
+The version is `__version__` in `qreview/__init__.py`; what changed is in `CHANGELOG.md`.
+For a release: raise the number, add to the changelog, push, then `git tag v0.2.0 && git push --tags`.
+
 ## Building
 
 Push a tag (`git tag v0.1.0 && git push --tags`) – GitHub Actions builds, tests and publishes

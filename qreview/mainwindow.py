@@ -14,7 +14,7 @@ from PyQt6.QtWidgets import (
     QDialogButtonBox, QProgressDialog, QListWidget, QListWidgetItem, QFrame, QSizePolicy,
 )
 
-from . import __version__, media
+from . import __version__, __build__, media
 from .model import (Project, Comment, APP_NAME, FILE_EXT, fmt_precise, fmt_short, import_qrecorder,
                     is_qrecorder_log)
 from .videoview import VideoView
@@ -252,6 +252,10 @@ class MainWindow(QMainWindow):
         title.setAlignment(Qt.AlignmentFlag.AlignCenter)
         title.setStyleSheet("font-size:30px; font-weight:700; color:#f2f2f7;")
         v.addWidget(title)
+        ver = QLabel(f"Version {__version__}")
+        ver.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        ver.setStyleSheet("color:#6e6e73;")
+        v.addWidget(ver)
         sub = QLabel("Drop a video, a project or a Q-Recorder recording here")
         sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
         sub.setStyleSheet("color:#9a9aa0; font-size:14px;")
@@ -832,7 +836,7 @@ class MainWindow(QMainWindow):
 
     def _input_started(self):
         self._input_time = self._time
-        self.input_time.setText(f"New comment at {fmt_short(self._time)}  ·  time held while you write")
+        self.input_time.setText(f"New comment at {fmt_short(self._time)} (held)")
         if self.pause_typing.isChecked():
             self._resume_after_input = self.pause()
 
@@ -965,7 +969,7 @@ class MainWindow(QMainWindow):
             name = os.path.basename(p.video_path) + " (not saved)"
         else:
             name = "Untitled"
-        self.setWindowTitle(f"{name}{' •' if self.dirty else ''} – {APP_NAME}")
+        self.setWindowTitle(f"{name}{' •' if self.dirty else ''} – {APP_NAME} {__version__}")
         self.setWindowModified(self.dirty)
 
     def confirm_discard(self) -> bool:
@@ -1339,7 +1343,8 @@ class MainWindow(QMainWindow):
 
     def about(self):
         QMessageBox.about(self, APP_NAME, (
-            f"<b>{APP_NAME}</b> {__version__}<br>Comments on video – part of the Q-Recorder family.<br><br>"
+            f"<b>{APP_NAME}</b> {__version__}<br><span style='color:#8e8e93'>{__build__}</span><br><br>"
+            "Comments on video – part of the Q-Recorder family.<br><br>"
             "Mikkel Peter Larsen &amp; Claude (Anthropic)<br>"
             "Uses Qt / PyQt6 and FFmpeg."))
 
