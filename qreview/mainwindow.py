@@ -567,8 +567,9 @@ class MainWindow(QMainWindow):
         menu_item(m, f"New comment here ({prof.name if prof else ''}) …", lambda: self.add_comment_dialog(pid, t))
         a1 = menu_item(m, "Set in-point here", lambda: self._set_trim(t, None))
         a2 = menu_item(m, "Set out-point here", lambda: self._set_trim(None, t))
-        a1.setEnabled(not self.project.trim_locked)
-        a2.setEnabled(not self.project.trim_locked)
+        a3 = menu_item(m, "Out-point at the end of the video", lambda: self._set_trim(None, self.project.video_duration))
+        for a in (a1, a2, a3):
+            a.setEnabled(not self.project.trim_locked)
         m.exec(pos)
 
     def _ask_length(self, cid):
@@ -878,7 +879,7 @@ class MainWindow(QMainWindow):
                 p.trim_in = max(0.0, min(tin, p.effective_out() - 0.1 if p.video_duration > 0 else tin))
             if tout is not None:
                 t = max(tout, p.trim_in + 0.1)
-                p.trim_out = None if p.video_duration > 0 and t >= p.video_duration - 0.001 else t
+                p.trim_out = p.out_or_end(t)
         self.change(fn, "Trim")
 
     def set_in(self):

@@ -102,6 +102,11 @@ def _run(app, out_dir, work):
     win.seek(10.0)
     win.set_out()
     check("trim", abs(p.trim_in - 0.5) < 0.01 and abs(p.effective_out() - 10.0) < 0.01, f"{p.trim_in}–{p.effective_out()}")
+    win.seek(p.video_duration - 0.03)   # the last frame
+    win.set_out()
+    check("out at the last frame = to the end", p.trim_out is None and abs(p.effective_out() - p.video_duration) < 0.001)
+    win.seek(10.0)
+    win.set_out()
     win.toggle_trim_lock()
     win.seek(3.0)
     win.set_in()

@@ -150,6 +150,14 @@ class Project:
             return d
         return min(self.trim_out, d) if d > 0 else self.trim_out
 
+    def out_or_end(self, t: float) -> float | None:
+        """An out-point at (or within about a frame of) the end of the video means "to the end" (None).
+        The player can only stand on the last frame, which starts a little before the end."""
+        d = self.video_duration
+        if d > 0 and t >= d - max(0.05, 1.5 / max(1.0, self.video_fps)):
+            return None
+        return t
+
     def is_trimmed(self) -> bool:
         return self.trim_in > 0.001 or (self.trim_out is not None and self.video_duration > 0
                                         and self.trim_out < self.video_duration - 0.001)

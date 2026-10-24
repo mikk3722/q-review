@@ -54,6 +54,11 @@ class Timeline(QWidget):
         self._font.setPixelSize(11)
         self._bold = QFont(self._font)
         self._bold.setBold(True)
+        from PyQt6.QtCore import QTimer
+        self._edge_timer = QTimer(self)
+        self._edge_timer.setInterval(40)
+        self._edge_timer.timeout.connect(self._edge_scroll)
+        self._last_move = None
 
     # ── Geometry ──
 
@@ -365,7 +370,7 @@ class Timeline(QWidget):
         if cid:
             c = self.project.comment(cid)
             self.ctl.select(cid)
-            self._drag = {"kind": "comment", "id": cid, "mode": mode, "x0": pos.x(), "y0": pos.y(),
+            self._drag = {"kind": "comment", "id": cid, "mode": mode, "x0": pos.x(), "y0": pos.y(), "t0": self.t_of(pos.x()),
                           "start": c.start, "dur": c.duration, "profile": c.profile_id,
                           "snap": self.ctl.begin_change(), "moved": False}
             return
@@ -375,8 +380,38 @@ class Timeline(QWidget):
         self._drag = {"kind": "scrub"}
         self.ctl.seek(max(0.0, self.t_of(pos.x())), fast=True)
 
+    def _edge_scroll(self):
+        """Scrolls the timeline while something is dragged to its edge, so the end can be reached."""
+        if self._drag is None or self._last_move is None:
+            self._edge_timer.stop()
+            return
+        pos, mods = self._last_move
+        step = 0.0
+        if pos.x() > self.width() - 24:
+            step = (pos.x() - (self.width() - 24) + 4) / self.pps * 0.5
+        elif pos.x() < HEADER_W + 16 and self.offset > 0:
+            step = -((HEADER_W + 16 - pos.x()) + 4) / self.pps * 0.5
+        if not step:
+            self._edge_timer.stop()
+            return
+        before = self.offset
+        self.offset += step
+        self.clamp_offset()
+        if self.offset != before:
+            self.viewChanged.emit()
+            self._apply_move(pos, mods)
+        else:
+            self._edge_timer.stop()
+
     def mouseMoveEvent(self, e):
         pos = e.position()
+        if self._drag is not None and self._drag["kind"] != "scrub":
+            self._last_move = (QPointF(pos), e.modifiers())
+            if (pos.x() > self.width() - 24 or pos.x() < HEADER_W + 16) and not self._edge_timer.isActive():
+                self._edge_timer.start()
+        self._apply_move(pos, e.modifiers(), e)
+
+    def _apply_move(self, pos, mods, e=None):
         d = self._drag
         if d is None:
             if pos.x() < HEADER_W:
@@ -397,7 +432,6 @@ class Timeline(QWidget):
                 else:
                     self.setToolTip("")
             return
-        mods = e.modifiers()
         proj = self.project
         if d["kind"] == "scrub":
             self.ctl.seek(max(0.0, self.t_of(pos.x())), fast=True)
@@ -412,7 +446,7 @@ class Timeline(QWidget):
             else:
                 t = min(t, dur) if dur > 0 else t
                 t = max(t, proj.trim_in + 0.1)
-                proj.trim_out = None if dur > 0 and t >= dur - 0.001 else t
+                proj.trim_out = proj.out_or_end(t)
                 self.ctl.seek(t, fast=True)
             d["moved"] = True
             self.ctl.live_changed()
@@ -424,7 +458,7 @@ class Timeline(QWidget):
             if not d["moved"] and abs(pos.x() - d["x0"]) < 3 and abs(pos.y() - d["y0"]) < 4:
                 return
             d["moved"] = True
-            dt = (pos.x() - d["x0"]) / self.pps
+            dt = self.t_of(pos.x()) - d["t0"]   # in time, so scrolling while dragging works
             limit = proj.video_duration if proj.video_duration > 0 else None
             if d["mode"] == "move":
                 self.setCursor(Qt.CursorShape.ClosedHandCursor)
@@ -452,6 +486,8 @@ class Timeline(QWidget):
             self.ctl.live_changed()
 
     def mouseReleaseEvent(self, e):
+        self._edge_timer.stop()
+        self._last_move = None
         d, self._drag = self._drag, None
         if d is None:
             return
