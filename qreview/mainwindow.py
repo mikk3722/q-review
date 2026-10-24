@@ -22,8 +22,16 @@ from .timeline import TimelinePanel
 from .panels import CommentInput, CommentList, ProfilesDialog, FlowLayout, chip_style
 from .export_dialog import ExportDialog
 
-VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".mts", ".m2ts", ".mxf", ".webm", ".wmv", ".mpg", ".mpeg", ".3gp"}
-VIDEO_FILTER = "Video (" + " ".join("*" + e for e in sorted(VIDEO_EXTS)) + ");;All files (*)"
+# Everything FFmpeg reads that is reasonably common. Files with other endings are also tried (probed) when opened.
+VIDEO_EXTS = {
+    ".mp4", ".m4v", ".mov", ".qt", ".mkv", ".webm", ".avi", ".wmv", ".asf", ".flv", ".f4v",
+    ".mpg", ".mpeg", ".mpe", ".m2v", ".vob", ".ts", ".mts", ".m2ts", ".m2t", ".tod", ".mod",
+    ".mxf", ".dv", ".3gp", ".3g2", ".ogv", ".divx", ".xvid", ".rm", ".rmvb", ".nut", ".y4m",
+    ".hevc", ".h264", ".264", ".h265", ".265", ".braw",
+}
+VIDEO_FILTER = ("Video (" + " ".join("*" + e for e in sorted(VIDEO_EXTS)) + " "
+                + " ".join("*" + e.upper() for e in sorted(VIDEO_EXTS)) + ");;All files (*)")
+PROJECT_EXTS = {FILE_EXT, ".json", ".protokol"}
 
 
 def menu_item(menu, text, fn):
@@ -797,12 +805,19 @@ class MainWindow(QMainWindow):
         if self.quiet:
             print(f"Media error: {error} {text}", flush=True)
             return
+        self._offer_convert(text)
+
+    def _offer_convert(self, reason: str):
+        """When the player can't show a video, offer to make an H.264 copy that always plays."""
         path = self.project.video_path
+        if not path or getattr(self, "_convert_offered", None) == path:
+            return
+        self._convert_offered = path
         box = QMessageBox(self)
         box.setWindowTitle("Video")
-        box.setText(f"The video cannot be played:\n{os.path.basename(path)}")
-        box.setInformativeText(f"{text}\n\nQ-Review can make a playable copy (H.264 MP4) next to the original. "
-                               f"The comments stay where they are.")
+        box.setText(f"The video cannot be played here:\n{os.path.basename(path)}")
+        box.setInformativeText(f"{reason}\n\nQ-Review can make a playable copy (H.264 MP4) next to the original. "
+                               f"The comments stay where they are, and the export works from the copy.")
         conv = box.addButton("Make playable copy", QMessageBox.ButtonRole.AcceptRole)
         box.addButton(QMessageBox.StandardButton.Close)
         box.exec()
@@ -824,7 +839,10 @@ class MainWindow(QMainWindow):
         dlg.setMinimumDuration(0)
         proc = QProcess(self)
         args = ["-hide_banner", "-y", "-nostdin", "-progress", "pipe:1", "-nostats", "-loglevel", "error", "-i", path,
-                "-map", "0:v:0", "-map", "0:a?", "-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
+                "-map", "0:v:0", "-map", "0:a?"]
+        if info.interlaced:
+            args += ["-vf", "bwdif=mode=send_frame:parity=auto:deint=all"]
+        args += ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18",
                 "-pix_fmt", "yuv420p", "-c:a", "aac", "-b:a", "192k", "-movflags", "+faststart", out]
 
         def progress():
@@ -1088,6 +1106,14 @@ class MainWindow(QMainWindow):
             return
         self.settings.setValue("lastDir", os.path.dirname(path))
         ext = os.path.splitext(path)[1].lower()
+        if ext not in VIDEO_EXTS and ext not in PROJECT_EXTS:
+            # Unknown ending: open it as a video if FFmpeg finds a picture in it
+            info = media.probe(path)
+            if info.width > 0:
+                ext = ".mp4"
+            else:
+                QMessageBox.warning(self, APP_NAME, f"{os.path.basename(path)} is not a video or project Q-Review can read.")
+                return
         if ext in VIDEO_EXTS:
             if self.project.video_path and (self.project.comments or self.project.path):
                 box = QMessageBox(self)
@@ -1195,6 +1221,16 @@ class MainWindow(QMainWindow):
         if info.width and info.height:
             self.project.video_size = (info.width, info.height)
         self.project.video_fps = info.fps or 25.0
+        if info.duration > 0 and info.width == 0 and not self.quiet:
+            QMessageBox.information(self, "Video", f"{os.path.basename(path)} has no picture – only sound.")
+        elif info.width:
+            # Picture in the file but none in the player after a while → offer a playable copy
+            def check():
+                if self.project.video_path == path and not self.video.video_item.nativeSize().isValid() \
+                        and not self.quiet:
+                    codec = f" ({info.video_codec})" if info.video_codec else ""
+                    self._offer_convert(f"The player shows no picture for this video format{codec}.")
+            QTimer.singleShot(5000, check)
         if info.duration > 0 and self.project.video_duration <= 0:
             self.project.video_duration = info.duration
             if self._fit_pending:

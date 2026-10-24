@@ -52,6 +52,7 @@ class VideoInfo:
         self.has_audio = False
         self.audio_streams = 0
         self.video_codec = ""
+        self.interlaced = False
 
 
 def probe(path: str) -> VideoInfo:
@@ -74,9 +75,15 @@ def probe(path: str) -> VideoInfo:
             cm = re.search(r"Video:\s*([A-Za-z0-9_]+)", line)
             if cm:
                 info.video_codec = cm.group(1)
+            if re.search(r"(top first|bottom first|top coded first|bottom coded first|interlaced)", line):
+                info.interlaced = True
             sm = re.search(r"\b(\d{2,5})x(\d{2,5})\b", line)
             if sm:
                 info.width, info.height = int(sm.group(1)), int(sm.group(2))
+                # Non-square pixels (PAL/NTSC 16:9, HDV …): use the size it is shown at
+                sar = re.search(r"SAR (\d+):(\d+)", line)
+                if sar and int(sar.group(1)) > 0 and int(sar.group(2)) > 0 and sar.group(1) != sar.group(2):
+                    info.width = int(round(info.width * int(sar.group(1)) / int(sar.group(2)) / 2)) * 2
             fm = re.search(r"(\d+(?:\.\d+)?)\s*fps", line) or re.search(r"(\d+(?:\.\d+)?)\s*tbr", line)
             if fm:
                 try:

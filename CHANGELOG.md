@@ -3,6 +3,10 @@
 ## 0.2.1 – not released yet
 - The writing field is a card that stands out: border in the profile's colour (brighter while writing),
   title with the profile, the time large in yellow (🔒 while held), bigger text.
+- Many more video formats: Qt's FFmpeg player is used on macOS too (MKV, AVI, WebM, MXF, MPEG-2, DV, MTS …);
+  files with unknown endings are tried as video; interlaced video is deinterlaced and non-square pixels
+  (PAL/NTSC 16:9) are shown correctly in the export; a playable copy is offered if the player shows no picture.
+- Export: by default only PDF and video; the export always follows the trim (no checkbox any more).
 - The text export is now a PDF: time, role with its colour and the comment, one row each (A4, page numbers).
 - Deleting everything you have written works like Esc: playback continues and the time is no longer held.
 

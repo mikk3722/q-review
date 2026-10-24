@@ -322,7 +322,9 @@ def build_video_command(project: Project, opts: ExportOptions, out_path: str, wo
         cmd += ["-ss", f"{p.window_start:.3f}"]
     cmd += ["-t", f"{length:.3f}", "-i", project.video_path]
     next_input = 1
-    scale = f"scale={w}:{h}:flags=bicubic,setsar=1"
+    info = media.probe(project.video_path)
+    deint = "bwdif=mode=send_frame:parity=auto:deint=all," if info.interlaced else ""
+    scale = f"{deint}scale={w}:{h}:flags=bicubic,setsar=1"
 
     ov = build_overlay_track(project, p, w, h, work) if opts.comment_mode == "burn" else None
     if ov:

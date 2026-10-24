@@ -48,21 +48,19 @@ class ExportDialog(QDialog):
         f.addRow("", self.own_folder)
         lay.addWidget(where)
 
-        # Trim
-        self.use_trim = QCheckBox()
-        if project.is_trimmed():
-            self.use_trim.setText(f"Only the trimmed part ({fmt_precise(project.trim_in)} – {fmt_precise(project.effective_out())})")
-            self.use_trim.setChecked(True)
-        else:
-            self.use_trim.setText("Only the trimmed part (the video is not trimmed)")
-            self.use_trim.setChecked(False)
-            self.use_trim.setEnabled(False)
-        lay.addWidget(self.use_trim)
+        # The trim is always used: the export is from the in-point to the out-point
+        length = project.effective_out() - project.trim_in
+        trim = QLabel(
+            f"Trimmed: {fmt_precise(project.trim_in)} – {fmt_precise(project.effective_out())}  ({fmt_precise(length)})"
+            if project.is_trimmed() else f"Whole video ({fmt_precise(project.video_duration)})")
+        trim.setStyleSheet("color:#ffd60a;" if project.is_trimmed() else "color:#9a9aa0;")
+        trim.setToolTip("The export always follows the in- and out-point. Timecodes start at 00:00:00 at the in-point.")
+        lay.addWidget(trim)
 
         # Video
         vid = QGroupBox("Video (MP4, H.264)")
         vid.setCheckable(True)
-        vid.setChecked(s.value("export/video", True, bool))
+        vid.setChecked(True)
         self.video_box = vid
         v = QVBoxLayout(vid)
         self.mode_group = QButtonGroup(self)
@@ -106,15 +104,12 @@ class ExportDialog(QDialog):
         self.srt = QCheckBox("Subtitles (.srt)")
         self.csv = QCheckBox("Excel (.csv)")
         self.json = QCheckBox("Q-Recorder log (.json)")
-        for cb, key, default in ((self.pdf, "pdf", True), (self.srt, "srt", True), (self.csv, "csv", False),
-                                 (self.json, "json", True)):
-            cb.setChecked(s.value(f"export/{key}", default, bool))
+        # Default: PDF and video only
+        for cb, default in ((self.pdf, True), (self.srt, False), (self.csv, False), (self.json, False)):
+            cb.setChecked(default)
             files.addWidget(cb)
         c.addLayout(files)
         self.json.setToolTip("Same layout as Q-Recorder's log – Q-Recorder's Play mode can open the exported video with it.")
-        self.relative = QCheckBox("Timecodes from the start of the exported video (00:00:00 = trim in-point)")
-        self.relative.setChecked(True)
-        c.addWidget(self.relative)
         self.only_video = QCheckBox("Only comments marked \"Show on video\"")
         self.only_video.setChecked(s.value("export/onlyVideo", False, bool))
         c.addWidget(self.only_video)
@@ -137,16 +132,13 @@ class ExportDialog(QDialog):
         self.cancel_btn.clicked.connect(self.cancel)
         lay.addWidget(self.buttons)
 
-        for w_ in (self.use_trim, self.only_video):
-            w_.toggled.connect(self._update)
-        self.use_trim.toggled.connect(lambda on: self.relative.setChecked(on) if on else None)
+        self.only_video.toggled.connect(self._update)
         self._update()
 
     def _update(self):
         opts = self.options()
         n = len(exporter.plan(self.project, opts).items)
         self.count.setText(f"{n} comment(s) will be exported.")
-        self.relative.setEnabled(opts.use_trim)
 
     def _browse(self):
         d = QFileDialog.getExistingDirectory(self, "Export to", self.folder.text())
@@ -157,7 +149,7 @@ class ExportDialog(QDialog):
         mode = {0: "burn", 1: "subs", 2: "none"}[max(0, self.mode_group.checkedId())]
         return exporter.ExportOptions(
             folder=self.folder.text().strip(), basename=self.name.text().strip() or "Export",
-            use_trim=self.use_trim.isChecked(), relative_times=self.relative.isChecked() or not self.use_trim.isChecked(),
+            use_trim=True, relative_times=True,
             pdf=self.pdf.isChecked(), txt=False, srt=self.srt.isChecked(), csv=self.csv.isChecked(), json=self.json.isChecked(),
             video=self.video_box.isChecked(), comment_mode=mode, crf=int(self.quality.currentData()),
             max_height=int(self.size.currentData() or 0), only_on_video=self.only_video.isChecked())
@@ -165,12 +157,9 @@ class ExportDialog(QDialog):
     def _remember(self, o):
         s = self.settings
         s.setValue("export/folder", o.folder)
-        s.setValue("export/video", o.video)
         s.setValue("export/mode", o.comment_mode)
         s.setValue("export/quality", self.quality.currentIndex())
         s.setValue("export/size", self.size.currentIndex())
-        for k in ("pdf", "srt", "csv", "json"):
-            s.setValue(f"export/{k}", getattr(o, k))
         s.setValue("export/onlyVideo", o.only_on_video)
 
     # ── Running ──
@@ -238,8 +227,7 @@ class ExportDialog(QDialog):
         self.progress.setValue(0)
         self.progress.setVisible(True)
         self.export_btn.setEnabled(False)
-        for w in (self.video_box, self.use_trim):
-            w.setEnabled(False)
+        self.video_box.setEnabled(False)
         self.status.setText("Exporting the video …")
         self.proc.start(cmd[0], cmd[1:])
 
@@ -289,7 +277,6 @@ class ExportDialog(QDialog):
             except Exception:
                 pass
             self.video_box.setEnabled(True)
-            self.use_trim.setEnabled(self.project.is_trimmed())
             self.status.setText("")
             QMessageBox.warning(self, "Export", "The video export failed.\n\n" + (errors.strip()[-1500:] or "Unknown error"))
 

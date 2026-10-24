@@ -10,7 +10,16 @@ import sys
 def main():
     if "--selftest" in sys.argv:
         os.environ.setdefault("QT_QPA_PLATFORM", "offscreen")
-    from PyQt6.QtCore import QCoreApplication
+    from PyQt6.QtCore import QCoreApplication, QLibraryInfo
+    # Use Qt's FFmpeg player on every platform (also macOS, where the default only plays what macOS plays),
+    # so MKV, AVI, WebM, MXF, MPEG-2, DV … play too. Only if the FFmpeg plugin is there.
+    if "QT_MEDIA_BACKEND" not in os.environ:
+        try:
+            plugins = os.path.join(QLibraryInfo.path(QLibraryInfo.LibraryPath.PluginsPath), "multimedia")
+            if any("ffmpeg" in n.lower() for n in os.listdir(plugins)):
+                os.environ["QT_MEDIA_BACKEND"] = "ffmpeg"
+        except OSError:
+            pass
     from PyQt6.QtWidgets import QApplication
     from qreview import style
     from qreview.model import APP_NAME
