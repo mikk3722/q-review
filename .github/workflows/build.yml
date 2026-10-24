@@ -15,6 +15,8 @@ jobs:
   build-windows:
     runs-on: windows-latest
     timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -23,7 +25,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt pyinstaller
+        run: pip install -r requirements.txt pyinstaller pillow
 
       - name: Self-test (source)
         timeout-minutes: 10
@@ -59,6 +61,21 @@ jobs:
             -Path "dist\Q-Review" `
             -DestinationPath "Q-Review-windows.zip"
 
+      - name: Publish self-test results (branch selftest-OS)
+        if: always()
+        shell: bash
+        run: |
+          for f in selftest-output/selftest.txt exe-selftest/selftest.txt; do
+            [ -f "$f" ] && grep '^FAIL' "$f" | sed 's/^/::error::/' || true
+          done
+          R="$RUNNER_TEMP/results"; rm -rf "$R"; mkdir -p "$R"; cd "$R"
+          cp -r "$GITHUB_WORKSPACE/selftest-output" "$GITHUB_WORKSPACE/exe-selftest" . 2>/dev/null || true
+          find . -name "*.mp4" -delete
+          git init -q -b results
+          git -c user.name=github-actions -c user.email=actions@github.com add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "Self-test ${{ github.run_number }} ($RUNNER_OS)" || exit 0
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" results:selftest-$RUNNER_OS
+
       - uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -75,6 +92,8 @@ jobs:
   build-macos:
     runs-on: macos-latest
     timeout-minutes: 40
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -83,7 +102,7 @@ jobs:
           python-version: '3.11'
 
       - name: Install Python dependencies
-        run: pip install -r requirements.txt pyinstaller
+        run: pip install -r requirements.txt pyinstaller pillow
 
       - name: Self-test (source)
         timeout-minutes: 10
@@ -195,6 +214,21 @@ jobs:
         if: always()
         run: |
           if [ -n "$SIGN_KEYCHAIN" ]; then security delete-keychain "$SIGN_KEYCHAIN" || true; fi
+
+      - name: Publish self-test results (branch selftest-OS)
+        if: always()
+        shell: bash
+        run: |
+          for f in selftest-output/selftest.txt exe-selftest/selftest.txt; do
+            [ -f "$f" ] && grep '^FAIL' "$f" | sed 's/^/::error::/' || true
+          done
+          R="$RUNNER_TEMP/results"; rm -rf "$R"; mkdir -p "$R"; cd "$R"
+          cp -r "$GITHUB_WORKSPACE/selftest-output" "$GITHUB_WORKSPACE/exe-selftest" . 2>/dev/null || true
+          find . -name "*.mp4" -delete
+          git init -q -b results
+          git -c user.name=github-actions -c user.email=actions@github.com add -A
+          git -c user.name=github-actions -c user.email=actions@github.com commit -q -m "Self-test ${{ github.run_number }} ($RUNNER_OS)" || exit 0
+          git push -q -f "https://x-access-token:${{ github.token }}@github.com/${{ github.repository }}" results:selftest-$RUNNER_OS
 
       - uses: actions/upload-artifact@v4
         if: always()
