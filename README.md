@@ -44,6 +44,9 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 ## Files
 
+- *File → Save as folder with video* makes one folder with the project and a copy of the video – easy to move
+  or hand on. The export can also put all its files in a new folder (on by default).
+
 - `<name>.qreview` – the project (JSON): video path (absolute and relative), trim, profiles, comments.
   Times are always in the original video's time; the export takes care of the trim.
 

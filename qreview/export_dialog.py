@@ -43,6 +43,9 @@ class ExportDialog(QDialog):
         src = os.path.splitext(os.path.basename(project.video_path or "Export"))[0]
         self.name = QLineEdit(f"{src} – review")
         f.addRow("Name", self.name)
+        self.own_folder = QCheckBox("Put everything in a new folder with this name")
+        self.own_folder.setChecked(s.value("export/ownFolder", True, bool))
+        f.addRow("", self.own_folder)
         lay.addWidget(where)
 
         # Trim
@@ -186,6 +189,19 @@ class ExportDialog(QDialog):
             QMessageBox.warning(self, "Export", "FFmpeg was not found, so the video cannot be exported.")
             return
         self._remember(o)
+        self.settings.setValue("export/ownFolder", self.own_folder.isChecked())
+        clean = "".join(ch for ch in o.basename if ch not in '<>:"/\\|?*').strip() or "Export"
+        if self.own_folder.isChecked():
+            folder, n = os.path.join(o.folder, clean), 2
+            while os.path.exists(folder):
+                folder, n = os.path.join(o.folder, f"{clean} {n}"), n + 1
+            try:
+                os.makedirs(folder)
+            except OSError as e:
+                QMessageBox.warning(self, "Export", f"Could not make the folder:\n{e}")
+                return
+            o.folder = folder
+        self.export_folder = o.folder
         exts = [".txt", ".srt", ".csv", ".json"] + ([".mp4"] if o.video else [])
         base = exporter.unique_base(o.folder, "".join(ch for ch in o.basename if ch not in '<>:"/\\|?*'), exts)
         self.out_files = []
@@ -263,7 +279,7 @@ class ExportDialog(QDialog):
             box.addButton(QMessageBox.StandardButton.Ok)
             box.exec()
             if box.clickedButton() == show:
-                QDesktopServices.openUrl(QUrl.fromLocalFile(self.folder.text()))
+                QDesktopServices.openUrl(QUrl.fromLocalFile(self.export_folder))
             self.accept()
         else:
             try:

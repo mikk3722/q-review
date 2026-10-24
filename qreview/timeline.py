@@ -561,6 +561,7 @@ class TimelinePanel(QWidget):
         title = QLabel("Timeline")
         title.setStyleSheet("color:#9a9aa0; font-weight:600;")
         tools.addWidget(title)
+        tools.addSpacing(14)
         hint = QLabel("Drag comments to move · edges to change length · yellow handles to trim · Alt = no snapping")
         hint.setStyleSheet("color:#6e6e73; font-size:11px;")
         tools.addWidget(hint)

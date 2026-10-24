@@ -182,6 +182,18 @@ class MainWindow(QMainWindow):
         self.chips = FlowLayout(self.chips_box)
         lv.addWidget(self.chips_box)
 
+        list_head = QHBoxLayout()
+        self.count_label = QLabel("Comments")
+        self.count_label.setStyleSheet("color:#9a9aa0; font-weight:600;")
+        list_head.addWidget(self.count_label)
+        list_head.addStretch()
+        self.follow = QCheckBox("Follow playback")
+        self.follow.setChecked(True)
+        self.follow.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        list_head.addWidget(self.follow)
+        lv.addLayout(list_head)
+        self.list = CommentList(self)
+        lv.addWidget(self.list, 1)
         self.input = CommentInput()
         self.input.submitted.connect(self._submit_comment)
         self.input.started.connect(self._input_started)
@@ -199,18 +211,6 @@ class MainWindow(QMainWindow):
         row.addWidget(self.pause_typing)
         lv.addLayout(row)
 
-        list_head = QHBoxLayout()
-        self.count_label = QLabel("Comments")
-        self.count_label.setStyleSheet("color:#9a9aa0; font-weight:600;")
-        list_head.addWidget(self.count_label)
-        list_head.addStretch()
-        self.follow = QCheckBox("Follow playback")
-        self.follow.setChecked(True)
-        self.follow.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        list_head.addWidget(self.follow)
-        lv.addLayout(list_head)
-        self.list = CommentList(self)
-        lv.addWidget(self.list, 1)
 
         # Centre: video + transport
         self.video = VideoView(self)
@@ -371,6 +371,7 @@ class MainWindow(QMainWindow):
         f.addSeparator()
         act(f, "Save", self.save, "Ctrl+S")
         act(f, "Save as …", self.save_as, "Ctrl+Shift+S")
+        act(f, "Save as folder with video …", self.save_as_folder)
         f.addSeparator()
         act(f, "Open video …", self.open_video_dialog)
         act(f, "Replace video …", self.replace_video_dialog, "Ctrl+R")
@@ -1192,6 +1193,75 @@ class MainWindow(QMainWindow):
             path += FILE_EXT
         p.path = path
         return self.save()
+
+    def save_as_folder(self) -> bool:
+        """A folder with the project and a copy of the video – easy to move or send as one."""
+        p = self.project
+        if not p.video_path or not os.path.exists(p.video_path):
+            QMessageBox.information(self, APP_NAME, "Open a video first.")
+            return False
+        default = os.path.splitext(os.path.basename(p.path or p.video_path))[0]
+        parent = QFileDialog.getExistingDirectory(self, "Where should the project folder be made?", self._last_dir())
+        if not parent:
+            return False
+        name, ok = QInputDialog.getText(self, "Save as folder", "Name of the new folder:", text=default)
+        name = "".join(ch for ch in (name or "") if ch not in '<>:"/\\|?*').strip()
+        if not ok or not name:
+            return False
+        folder = os.path.join(parent, name)
+        if os.path.exists(folder) and os.listdir(folder):
+            if QMessageBox.question(self, "Save as folder", f"The folder \"{name}\" already exists and is not empty.\n"
+                                    "Put the project in it anyway?") != QMessageBox.StandardButton.Yes:
+                return False
+        os.makedirs(folder, exist_ok=True)
+        target = os.path.join(folder, os.path.basename(p.video_path))
+        if os.path.normcase(os.path.abspath(target)) != os.path.normcase(os.path.abspath(p.video_path)):
+            if os.path.exists(target) and os.path.getsize(target) == os.path.getsize(p.video_path):
+                pass   # already copied
+            elif not self._copy_with_progress(p.video_path, target):
+                return False
+        p.video_path = target
+        p.path = os.path.join(folder, name + FILE_EXT)
+        self.settings.setValue("lastDir", parent)
+        ok = self.save()
+        if ok:
+            self.statusBar().showMessage(f"Saved in the folder {folder} – the project now uses the copy of the video.", 8000)
+        return ok
+
+    def _copy_with_progress(self, src: str, dst: str) -> bool:
+        size = max(1, os.path.getsize(src))
+        dlg = QProgressDialog(f"Copying {os.path.basename(src)} …", "Cancel", 0, 1000, self)
+        dlg.setWindowTitle("Save as folder")
+        dlg.setMinimumDuration(0)
+        dlg.setWindowModality(Qt.WindowModality.WindowModal)
+        tmp = dst + ".part"
+        done = 0
+        try:
+            with open(src, "rb") as fi, open(tmp, "wb") as fo:
+                while True:
+                    chunk = fi.read(8 * 1024 * 1024)
+                    if not chunk:
+                        break
+                    fo.write(chunk)
+                    done += len(chunk)
+                    dlg.setValue(int(done / size * 1000))
+                    QApplication.processEvents()
+                    if dlg.wasCanceled():
+                        raise InterruptedError
+            os.replace(tmp, dst)
+            return True
+        except InterruptedError:
+            pass
+        except Exception as e:
+            QMessageBox.warning(self, "Save as folder", f"Could not copy the video:\n{e}")
+        finally:
+            dlg.reset()
+            if os.path.exists(tmp):
+                try:
+                    os.remove(tmp)
+                except OSError:
+                    pass
+        return False
 
     # Recent projects
     def _recent(self) -> list[str]:
