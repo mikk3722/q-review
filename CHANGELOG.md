@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.2 – 2026-10-24
+- The macOS version is signed with Developer ID and notarised by Apple (app and DMG), so it opens with a
+  normal double-click.
+
 ## 0.2.1 – 2026-10-24
 - The writing field is a card that stands out: border in the profile's colour (brighter while writing),
   title with the profile, the time large in yellow (🔒 while held), bigger text.

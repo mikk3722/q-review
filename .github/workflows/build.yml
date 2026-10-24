@@ -211,9 +211,21 @@ jobs:
           ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/app.zip"
           xcrun notarytool submit "$RUNNER_TEMP/app.zip" \
             --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" \
-            --wait --timeout 30m
+            --wait --timeout 30m --output-format json > "$RUNNER_TEMP/notary.json" || true
+          cat "$RUNNER_TEMP/notary.json"
+          STATUS=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('status',''))" "$RUNNER_TEMP/notary.json")
+          if [ "$STATUS" != "Accepted" ]; then
+            SUB=$(python3 -c "import json,sys; print(json.load(open(sys.argv[1])).get('id',''))" "$RUNNER_TEMP/notary.json")
+            [ -n "$SUB" ] && xcrun notarytool log "$SUB" \
+              --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID"
+            echo "::error::Notarisation failed ($STATUS) -- see Apple's log above"
+            exit 1
+          fi
+          # Staple the ticket into the app, so it also opens on a Mac without internet
           xcrun stapler staple "$APP"
           xcrun stapler validate "$APP"
+          spctl --assess --type execute --verbose=2 "$APP"
+          echo "::notice::macOS app signed and notarised"
 
       - name: Self-test (built app)
         timeout-minutes: 10
@@ -223,10 +235,24 @@ jobs:
           "dist/Q-Review.app/Contents/MacOS/Q-Review" --selftest "$PWD/exe-selftest"
 
       - name: Create DMG
+        env:
+          APPLE_ID:           ${{ secrets.APPLE_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+          APPLE_TEAM_ID:      ${{ secrets.APPLE_TEAM_ID }}
         run: |
-          hdiutil create -volname "Q-Review" -srcfolder "dist/Q-Review.app" -ov -format UDZO "Q-Review-macos.dmg"
-          if [ -n "$SIGN_IDENTITY" ]; then
-            codesign --force --timestamp --sign "$SIGN_IDENTITY" "Q-Review-macos.dmg"
+          DMG="Q-Review-macos.dmg"
+          hdiutil create -volname "Q-Review" -srcfolder "dist/Q-Review.app" -ov -format UDZO "$DMG"
+          if [ -z "$SIGN_IDENTITY" ]; then
+            echo "::warning::The macOS build is NOT signed – add the Apple secrets to the repository (see README)."
+            exit 0
+          fi
+          codesign --force --timestamp --sign "$SIGN_IDENTITY" "$DMG"
+          if [ -n "$APPLE_ID" ]; then
+            xcrun notarytool submit "$DMG" \
+              --apple-id "$APPLE_ID" --password "$APPLE_APP_PASSWORD" --team-id "$APPLE_TEAM_ID" \
+              --wait --timeout 30m
+            xcrun stapler staple "$DMG"
+            xcrun stapler validate "$DMG"
           fi
 
       - name: Remove signing keychain

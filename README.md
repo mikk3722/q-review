@@ -54,6 +54,14 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 See [Releases](../../releases). Windows: unzip `Q-Review-windows.zip` and run `Q-Review.exe` (FFmpeg is included).
 
+## Signing (macOS)
+
+The macOS build is signed and notarised when these repository secrets exist
+(*Settings → Secrets and variables → Actions*) – the same five as Wing Theatre Controller:
+`MACOS_CERT_P12` (the Developer ID Application certificate as base64), `MACOS_CERT_PASSWORD`,
+`APPLE_ID`, `APPLE_APP_PASSWORD` (app-specific password) and `APPLE_TEAM_ID`.
+Without them the app is signed ad hoc (right-click → Open the first time).
+
 ## Versions
 
 The version is `__version__` in `qreview/__init__.py`; what changed is in `CHANGELOG.md`.
