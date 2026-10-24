@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 – not released yet
+## 0.2.1 – 2026-10-24
 - The writing field is a card that stands out: border in the profile's colour (brighter while writing),
   title with the profile, the time large in yellow (🔒 while held), bigger text.
 - Many more video formats: Qt's FFmpeg player is used on macOS too (MKV, AVI, WebM, MXF, MPEG-2, DV, MTS …);
