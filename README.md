@@ -54,6 +54,13 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 See [Releases](../../releases). Windows: unzip `Q-Review-windows.zip` and run `Q-Review.exe` (FFmpeg is included).
 
+## Windows: "Windows protected your PC"
+
+The Windows build is not signed with a Windows code-signing certificate, so SmartScreen warns the first time:
+click **More info → Run anyway**. (If the ZIP was downloaded: right-click the ZIP → *Properties* →
+tick *Unblock* before unzipping.) Always unzip first – the app does not run from inside the ZIP.
+If it still does not start, the reason is in `%LOCALAPPDATA%\Q-Review\q-review.log`.
+
 ## Signing (macOS)
 
 The macOS build is signed and notarised when these repository secrets exist

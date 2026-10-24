@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import os
+import sys
 import threading
 
 from PyQt6.QtCore import Qt, QUrl, QTimer, QSettings, pyqtSignal, QEvent, QProcess
@@ -442,6 +443,7 @@ class MainWindow(QMainWindow):
 
         hm = mb.addMenu("&Help")
         act(hm, "Keyboard shortcuts", self.show_shortcuts)
+        act(hm, "Show log file", self.show_log)
         act(hm, f"About {APP_NAME}", self.about)
         self._update_recent_menu()
 
@@ -1417,6 +1419,15 @@ class MainWindow(QMainWindow):
             "Ctrl+Z / Ctrl+Y\tUndo / redo\n"
             "Ctrl+wheel\tZoom the timeline\n"
             "Alt (while dragging)\tNo snapping"))
+
+    def show_log(self):
+        from PyQt6.QtGui import QDesktopServices
+        main = sys.modules.get("__main__")
+        path = getattr(main, "LOG_PATH", None)
+        if path and os.path.exists(path):
+            QDesktopServices.openUrl(QUrl.fromLocalFile(os.path.dirname(path)))
+        else:
+            QMessageBox.information(self, APP_NAME, "There is no log file.")
 
     def about(self):
         QMessageBox.about(self, APP_NAME, (
