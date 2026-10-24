@@ -16,6 +16,9 @@ jobs:
     timeout-minutes: 40
     permissions:
       contents: write
+    env:
+      # Azure Artifact Signing – the Windows files are signed when these secrets exist (see README)
+      AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
     steps:
       - uses: actions/checkout@v4
 
@@ -54,6 +57,35 @@ jobs:
             --add-data "version.txt;." `
             --collect-all imageio_ffmpeg `
             q_review.py
+
+      - name: Sign Windows files (Azure Artifact Signing)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: dist\Q-Review
+          files-folder-filter: exe,dll,pyd
+          files-folder-recurse: true
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Check the signature
+        shell: pwsh
+        run: |
+          $sig = Get-AuthenticodeSignature "dist\Q-Review\Q-Review.exe"
+          if ($sig.Status -eq "Valid") {
+            Write-Output "::notice::Windows app signed by $($sig.SignerCertificate.Subject)"
+          } elseif ($env:AZURE_CLIENT_ID) {
+            throw "Q-Review.exe is not signed correctly: $($sig.Status) $($sig.StatusMessage)"
+          } else {
+            Write-Output "::warning::The Windows build is NOT signed – add the Azure Artifact Signing secrets (see README)."
+          }
 
       - name: Self-test (built app)
         timeout-minutes: 10

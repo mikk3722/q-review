@@ -61,6 +61,14 @@ click **More info → Run anyway**. (If the ZIP was downloaded: right-click the 
 tick *Unblock* before unzipping.) Always unzip first – the app does not run from inside the ZIP.
 If it still does not start, the reason is in `%LOCALAPPDATA%\Q-Review\q-review.log`.
 
+## Signing (Windows)
+
+The Windows files are signed with **Azure Artifact Signing** when these repository secrets exist:
+`AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` (an app registration that has the role
+*Artifact Signing Certificate Profile Signer* on the signing account), `AZURE_SIGNING_ENDPOINT`
+(e.g. `https://weu.codesigning.azure.net/` for West Europe), `AZURE_SIGNING_ACCOUNT` (the account name) and
+`AZURE_CERT_PROFILE` (the certificate profile name). Without them the build is unsigned.
+
 ## Signing (macOS)
 
 The macOS build is signed and notarised when these repository secrets exist
