@@ -629,8 +629,11 @@ class MainWindow(QMainWindow):
         self._chips_key = key
         while self.chips.count():
             it = self.chips.takeAt(0)
-            if it.widget():
-                it.widget().deleteLater()
+            w = it.widget() if it else None
+            if w:
+                w.hide()
+                w.setParent(None)
+                w.deleteLater()
         self.profile_menu.clear()
         if getattr(self, "_profile_group", None) is not None:
             self._profile_group.deleteLater()
