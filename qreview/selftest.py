@@ -139,7 +139,10 @@ def _run(app, out_dir, work):
     pi = media.probe(mp4)
     check("export burned-in video", os.path.exists(mp4) and abs(pi.duration - 9.5) < 0.2 and pi.has_audio,
           f"{pi.duration:.2f} s in {time.time() - t0:.1f} s")
-    for ext in (".txt", ".srt", ".json"):
+    pdfs = [f for f in files if f.endswith(".pdf")]
+    check("export .pdf", bool(pdfs) and open(pdfs[0], "rb").read(5) == b"%PDF-" and os.path.getsize(pdfs[0]) > 2000,
+          f"{os.path.getsize(pdfs[0]) if pdfs else 0} bytes")
+    for ext in (".srt", ".json"):
         check(f"export {ext}", any(f.endswith(ext) for f in files))
     srt = open([f for f in files if f.endswith(".srt")][0], encoding="utf-8").read()
     check("srt times relative to trim", "00:00:00,500 --> 00:00:05,500" in srt, srt.splitlines()[1] if srt else "")
@@ -154,7 +157,7 @@ def _run(app, out_dir, work):
 
     # Export: subtitle track, 720p max, no trim
     opts2 = exporter.ExportOptions(folder=work, basename="Export subs", comment_mode="subs", use_trim=False,
-                                   max_height=540, txt=False, srt=False, json=False, csv=True)
+                                   max_height=540, pdf=False, srt=False, json=False, csv=True)
     files2 = run_export_blocking(p, opts2)
     r = subprocess.run([ff, "-hide_banner", "-i", files2[0]], capture_output=True, text=True,
                        creationflags=media.CREATE_FLAGS)

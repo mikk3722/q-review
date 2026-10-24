@@ -21,7 +21,7 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 - **Export**:
   - Video (MP4, H.264) – comments burned into the picture (exactly as in the preview), as a subtitle track that
     can be switched on/off in the player, or without comments. Original size, 1080p, 720p or 540p.
-  - Comments with timecodes – `.txt` (as Q-Recorder's log), `.srt`, `.csv` (opens in Excel) and `.json`
+  - Comments with timecodes – `.pdf` (time, role with colour, comment), `.srt`, `.csv` (opens in Excel) and `.json`
     (Q-Recorder's log format, so Q-Recorder's *Play* mode can open the exported video).
   - Timecodes start at 00:00:00 at the trim in-point, so they match the exported video.
 

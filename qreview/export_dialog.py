@@ -101,11 +101,12 @@ class ExportDialog(QDialog):
         com = QGroupBox("Comments with timecodes")
         c = QVBoxLayout(com)
         files = QHBoxLayout()
-        self.txt = QCheckBox("Text (.txt)")
+        self.pdf = QCheckBox("PDF (.pdf)")
+        self.pdf.setToolTip("Time, role (with its colour) and comment – ready to print or send")
         self.srt = QCheckBox("Subtitles (.srt)")
         self.csv = QCheckBox("Excel (.csv)")
         self.json = QCheckBox("Q-Recorder log (.json)")
-        for cb, key, default in ((self.txt, "txt", True), (self.srt, "srt", True), (self.csv, "csv", False),
+        for cb, key, default in ((self.pdf, "pdf", True), (self.srt, "srt", True), (self.csv, "csv", False),
                                  (self.json, "json", True)):
             cb.setChecked(s.value(f"export/{key}", default, bool))
             files.addWidget(cb)
@@ -157,7 +158,7 @@ class ExportDialog(QDialog):
         return exporter.ExportOptions(
             folder=self.folder.text().strip(), basename=self.name.text().strip() or "Export",
             use_trim=self.use_trim.isChecked(), relative_times=self.relative.isChecked() or not self.use_trim.isChecked(),
-            txt=self.txt.isChecked(), srt=self.srt.isChecked(), csv=self.csv.isChecked(), json=self.json.isChecked(),
+            pdf=self.pdf.isChecked(), txt=False, srt=self.srt.isChecked(), csv=self.csv.isChecked(), json=self.json.isChecked(),
             video=self.video_box.isChecked(), comment_mode=mode, crf=int(self.quality.currentData()),
             max_height=int(self.size.currentData() or 0), only_on_video=self.only_video.isChecked())
 
@@ -168,7 +169,7 @@ class ExportDialog(QDialog):
         s.setValue("export/mode", o.comment_mode)
         s.setValue("export/quality", self.quality.currentIndex())
         s.setValue("export/size", self.size.currentIndex())
-        for k in ("txt", "srt", "csv", "json"):
+        for k in ("pdf", "srt", "csv", "json"):
             s.setValue(f"export/{k}", getattr(o, k))
         s.setValue("export/onlyVideo", o.only_on_video)
 
@@ -179,7 +180,7 @@ class ExportDialog(QDialog):
         if not os.path.isdir(o.folder):
             QMessageBox.warning(self, "Export", "The folder does not exist.")
             return
-        if not (o.video or o.txt or o.srt or o.csv or o.json):
+        if not (o.video or o.pdf or o.srt or o.csv or o.json):
             QMessageBox.information(self, "Export", "Choose at least one thing to export.")
             return
         if o.video and not (self.project.video_path and os.path.exists(self.project.video_path)):
@@ -202,7 +203,7 @@ class ExportDialog(QDialog):
                 return
             o.folder = folder
         self.export_folder = o.folder
-        exts = [".txt", ".srt", ".csv", ".json"] + ([".mp4"] if o.video else [])
+        exts = [".pdf", ".txt", ".srt", ".csv", ".json"] + ([".mp4"] if o.video else [])
         base = exporter.unique_base(o.folder, "".join(ch for ch in o.basename if ch not in '<>:"/\\|?*'), exts)
         self.out_files = []
         video_name = base + ".mp4" if o.video else os.path.basename(self.project.video_path or "")
@@ -323,7 +324,7 @@ class ExportDialog(QDialog):
 def run_export_blocking(project, opts: exporter.ExportOptions) -> list[str]:
     """Used by the self-test: the same export without a dialog."""
     import subprocess
-    exts = [".txt", ".srt", ".csv", ".json", ".mp4"]
+    exts = [".pdf", ".txt", ".srt", ".csv", ".json", ".mp4"]
     base = exporter.unique_base(opts.folder, opts.basename, exts)
     out_files = exporter.write_text_files(project, opts, base, base + ".mp4")
     if opts.video:

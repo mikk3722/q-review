@@ -3,6 +3,7 @@
 ## 0.2.1 – not released yet
 - The writing field is a card that stands out: border in the profile's colour (brighter while writing),
   title with the profile, the time large in yellow (🔒 while held), bigger text.
+- The text export is now a PDF: time, role with its colour and the comment, one row each (A4, page numbers).
 - Deleting everything you have written works like Esc: playback continues and the time is no longer held.
 
 ## 0.2.0 – 2026-10-24
