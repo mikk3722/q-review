@@ -17,11 +17,9 @@ FILE_EXT = ".qreview"
 FORMAT_VERSION = 1
 
 # Same default roles as Q-Recorder (Settings.swift → defaultRoles).
+# One profile to start with – more can be added under "Edit profiles" (or imported from Q-Recorder).
 DEFAULT_PROFILES = [
-    ("Director", "#E5484D"),
-    ("Lighting", "#F5A524"),
-    ("Sound", "#3E9BFF"),
-    ("Stage manager", "#46A758"),
+    ("Notes", "#E5484D"),
 ]
 REVIEW_COLOR = "#5AC8FA"   # Q-Recorder: notes added while reviewing
 
@@ -122,6 +120,7 @@ class Project:
         self.video_fps: float = 25.0
         self.trim_in: float = 0.0
         self.trim_out: float | None = None    # None = end of video
+        self.trim_locked: bool = False
         self.overlay_enabled: bool = True     # "comments on video" (global)
         self.default_duration: float = 5.0
         self.style = OverlayStyle()
@@ -189,7 +188,7 @@ class Project:
 
     def snapshot(self) -> dict:
         return copy.deepcopy({
-            "trim_in": self.trim_in, "trim_out": self.trim_out,
+            "trim_in": self.trim_in, "trim_out": self.trim_out, "trim_locked": self.trim_locked,
             "overlay_enabled": self.overlay_enabled, "default_duration": self.default_duration,
             "style": asdict(self.style),
             "profiles": [asdict(p) for p in self.profiles],
@@ -200,6 +199,7 @@ class Project:
         snap = copy.deepcopy(snap)
         self.trim_in = snap["trim_in"]
         self.trim_out = snap["trim_out"]
+        self.trim_locked = snap.get("trim_locked", False)
         self.overlay_enabled = snap["overlay_enabled"]
         self.default_duration = snap["default_duration"]
         self.style = OverlayStyle(**snap["style"])
@@ -223,7 +223,8 @@ class Project:
             "saved": datetime.now().isoformat(timespec="seconds"),
             "video": video,
             "trim": {"in": round(self.trim_in, 3),
-                     "out": None if self.trim_out is None else round(self.trim_out, 3)},
+                     "out": None if self.trim_out is None else round(self.trim_out, 3),
+                     "locked": self.trim_locked},
             "overlayEnabled": self.overlay_enabled,
             "defaultDuration": self.default_duration,
             "style": {"fontScale": self.style.font_scale, "maxStacked": self.style.max_stacked,
@@ -268,6 +269,7 @@ class Project:
         trim = root.get("trim") or {}
         p.trim_in = float(trim.get("in") or 0)
         p.trim_out = None if trim.get("out") is None else float(trim["out"])
+        p.trim_locked = bool(trim.get("locked", False))
         p.overlay_enabled = bool(root.get("overlayEnabled", True))
         p.default_duration = float(root.get("defaultDuration", 5.0))
         st = root.get("style") or {}

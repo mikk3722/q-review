@@ -77,6 +77,10 @@ def _run(app, out_dir, work):
 
     # Comments
     p = win.project
+    check("one profile to start with", len(p.profiles) == 1)
+    from .model import Profile
+    p.profiles += [Profile("Lighting", "#F5A524"), Profile("Sound", "#3E9BFF"), Profile("Stage manager", "#46A758")]
+    win.refresh_all()
     win.add_comment("Light cue 12 comes too early", 1.0)
     win.set_active_profile(p.profiles[2].id)
     win.add_comment("The music fade should be slower – try 5 seconds instead of 3, and keep the vocal on top", 2.0)
@@ -98,13 +102,18 @@ def _run(app, out_dir, work):
     win.seek(10.0)
     win.set_out()
     check("trim", abs(p.trim_in - 0.5) < 0.01 and abs(p.effective_out() - 10.0) < 0.01, f"{p.trim_in}–{p.effective_out()}")
+    win.toggle_trim_lock()
+    win.seek(3.0)
+    win.set_in()
+    win.clear_trim()
+    check("locked trim can't move", p.trim_locked and abs(p.trim_in - 0.5) < 0.01)
 
     # Save / open
     proj_path = os.path.join(work, "Test.qreview")
     p.save(proj_path)
     q = Project.load(proj_path)
     check("save and reopen", len(q.comments) == 4 and q.comments[2].x == 0.62 and abs(q.trim_in - 0.5) < 0.01
-          and q.video_path == video)
+          and q.video_path == video and q.trim_locked)
     shutil.copy(proj_path, os.path.join(out_dir, "Test.qreview"))
 
     # Screenshot with the bubbles

@@ -202,6 +202,15 @@ class CommentDelegate(QStyledItemDelegate):
                    Qt.TextFlag.TextWordWrap.value, c.text)
         p.restore()
 
+    def helpEvent(self, event, view, option, index):
+        from PyQt6.QtWidgets import QToolTip
+        check, _ = self._layout(option.rect)
+        if check.adjusted(-4, -4, 4, 4).contains(event.pos()):
+            QToolTip.showText(event.globalPos(), "Show this comment on the video", view)
+            return True
+        QToolTip.showText(event.globalPos(), "Click: go to the comment · double-click: edit · right-click: more", view)
+        return True
+
     def editorEvent(self, event, model, option, index):
         if event.type() == QEvent.Type.MouseButtonRelease:
             check, _ = self._layout(option.rect)
@@ -273,144 +282,6 @@ class CommentList(QListWidget):
     def resizeEvent(self, e):
         super().resizeEvent(e)
         self.doItemsLayout()
-
-
-# ── Selected comment ──────────────────────────────────────────────────────────
-
-class Inspector(QGroupBox):
-    def __init__(self, ctl):
-        super().__init__("Selected comment")
-        self.ctl = ctl
-        self._loading = False
-        form = QFormLayout(self)
-        form.setContentsMargins(10, 14, 10, 10)
-        form.setVerticalSpacing(6)
-
-        self.profile = QComboBox()
-        self.profile.currentIndexChanged.connect(self._profile_changed)
-        form.addRow("Profile", self.profile)
-
-        row = QHBoxLayout()
-        self.start = QLineEdit()
-        self.start.setPlaceholderText("00:00:00.000")
-        self.start.editingFinished.connect(self._start_changed)
-        row.addWidget(self.start, 1)
-        here = QToolButton()
-        here.setText("⇤ Playhead")
-        here.setToolTip("Move the comment to the playhead")
-        here.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        here.clicked.connect(lambda: ctl.move_selected_to_playhead())
-        row.addWidget(here)
-        form.addRow("Start", row)
-
-        self.duration = QDoubleSpinBox()
-        self.duration.setRange(0.2, 36000)
-        self.duration.setDecimals(1)
-        self.duration.setSingleStep(0.5)
-        self.duration.setSuffix(" s")
-        self.duration.setKeyboardTracking(False)
-        self.duration.valueChanged.connect(self._duration_changed)
-        form.addRow("Length", self.duration)
-
-        row2 = QHBoxLayout()
-        self.on_video = QCheckBox("Show on video")
-        self.on_video.toggled.connect(self._on_video_changed)
-        row2.addWidget(self.on_video)
-        row2.addStretch()
-        self.position = QLabel()
-        self.position.setStyleSheet("color:#8e8e93;")
-        row2.addWidget(self.position)
-        self.reset_pos = QToolButton()
-        self.reset_pos.setText("Auto")
-        self.reset_pos.setToolTip("Back to the automatic position (bottom left)")
-        self.reset_pos.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.reset_pos.clicked.connect(lambda: ctl.reset_position(ctl.selected_id))
-        row2.addWidget(self.reset_pos)
-        form.addRow("", row2)
-
-        self.text = QPlainTextEdit()
-        self.text.setFixedHeight(70)
-        self.text.installEventFilter(self)
-        form.addRow("Text", self.text)
-
-        row3 = QHBoxLayout()
-        row3.addStretch()
-        delete = QPushButton("Delete")
-        delete.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        delete.clicked.connect(lambda: ctl.delete_comment(ctl.selected_id))
-        row3.addWidget(delete)
-        form.addRow("", row3)
-        self.load()
-
-    def eventFilter(self, obj, ev):
-        if obj is self.text and ev.type() == QEvent.Type.FocusOut:
-            self._text_changed()
-        if obj is self.text and ev.type() == QEvent.Type.KeyPress:
-            if ev.key() in (Qt.Key.Key_Return, Qt.Key.Key_Enter) and ev.modifiers() & Qt.KeyboardModifier.ControlModifier:
-                self._text_changed()
-                return True
-        return False
-
-    def load(self):
-        c = self.ctl.project.comment(self.ctl.selected_id)
-        self._loading = True
-        self.setEnabled(c is not None)
-        self.profile.clear()
-        for p in self.ctl.project.profiles:
-            self.profile.addItem(p.name, p.id)
-        if c:
-            i = self.profile.findData(c.profile_id)
-            self.profile.setCurrentIndex(max(0, i))
-            if not self.start.hasFocus():
-                self.start.setText(fmt_precise(c.start))
-            self.duration.setValue(c.duration)
-            self.on_video.setChecked(c.on_video)
-            self.position.setText("Placed by hand" if c.has_position else "Automatic position")
-            self.reset_pos.setEnabled(c.has_position)
-            if not self.text.hasFocus():
-                self.text.setPlainText(c.text)
-        else:
-            self.start.clear()
-            self.text.clear()
-            self.position.setText("")
-        self._loading = False
-
-    def _c(self):
-        return None if self._loading else self.ctl.project.comment(self.ctl.selected_id)
-
-    def _profile_changed(self, _i):
-        c = self._c()
-        pid = self.profile.currentData()
-        if c and pid and pid != c.profile_id:
-            self.ctl.change(lambda: setattr(c, "profile_id", pid), "Change profile")
-
-    def _start_changed(self):
-        c = self._c()
-        if not c:
-            return
-        t = parse_time(self.start.text())
-        if t is None:
-            self.start.setText(fmt_precise(c.start))
-            return
-        if abs(t - c.start) > 0.0005:
-            self.ctl.change(lambda: setattr(c, "start", t), "Change start")
-
-    def _duration_changed(self, v):
-        c = self._c()
-        if c and abs(v - c.duration) > 0.001:
-            self.ctl.change(lambda: setattr(c, "duration", float(v)), "Change length")
-
-    def _on_video_changed(self, on):
-        c = self._c()
-        if c and on != c.on_video:
-            self.ctl.change(lambda: setattr(c, "on_video", on), "Show on video")
-
-    def _text_changed(self):
-        c = self._c()
-        if c:
-            t = self.text.toPlainText().strip()
-            if t and t != c.text:
-                self.ctl.change(lambda: setattr(c, "text", t), "Edit text")
 
 
 # ── Profiles dialog ───────────────────────────────────────────────────────────

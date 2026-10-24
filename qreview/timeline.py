@@ -261,7 +261,7 @@ class Timeline(QWidget):
                 pass   # still draw the out handle at the end
             x = self.x_of(t)
             if HEADER_W - 2 <= x <= W + 2:
-                p.setPen(QPen(TRIM, 2))
+                p.setPen(QPen(TRIM, 2, Qt.PenStyle.DashLine if proj.trim_locked else Qt.PenStyle.SolidLine))
                 p.drawLine(QPointF(x, 2), QPointF(x, H))
                 p.setBrush(TRIM)
                 p.setPen(Qt.PenStyle.NoPen)
@@ -316,6 +316,8 @@ class Timeline(QWidget):
         if pos.y() > RULER_H + WAVE_H:
             return None
         proj = self.project
+        if proj.trim_locked:
+            return None
         if abs(pos.x() - self.x_of(proj.trim_in)) <= 7:
             return "in"
         if proj.video_duration > 0 and abs(pos.x() - self.x_of(proj.effective_out())) <= 7:

@@ -19,7 +19,7 @@ from .model import (Project, Comment, APP_NAME, FILE_EXT, fmt_precise, fmt_short
                     is_qrecorder_log)
 from .videoview import VideoView
 from .timeline import TimelinePanel
-from .panels import CommentInput, CommentList, Inspector, ProfilesDialog, FlowLayout, chip_style
+from .panels import CommentInput, CommentList, ProfilesDialog, FlowLayout, chip_style
 from .export_dialog import ExportDialog
 
 VIDEO_EXTS = {".mp4", ".mov", ".m4v", ".mkv", ".avi", ".mts", ".m2ts", ".mxf", ".webm", ".wmv", ".mpg", ".mpeg", ".3gp"}
@@ -211,8 +211,6 @@ class MainWindow(QMainWindow):
         lv.addLayout(list_head)
         self.list = CommentList(self)
         lv.addWidget(self.list, 1)
-        self.inspector = Inspector(self)
-        lv.addWidget(self.inspector)
 
         # Centre: video + transport
         self.video = VideoView(self)
@@ -303,21 +301,19 @@ class MainWindow(QMainWindow):
             h.addWidget(b)
             return b
 
-        btn("⇤", "Go to the in-point (Home)", lambda: self.seek(self.project.trim_in))
-        btn("−5", "Back 5 s (←, Shift+← = 1 s)", lambda: self.skip(-5))
-        btn("◁|", "One frame back (,)", lambda: self.step_frame(-1))
+        btn("◁|", "Nudge one frame back (,)", lambda: self.step_frame(-1))
         self.play_btn = btn("▶", "Play / pause (Space)", self.toggle_play, 46)
-        btn("|▷", "One frame forward (.)", lambda: self.step_frame(1))
-        btn("+5", "Forward 5 s (→, Shift+→ = 1 s)", lambda: self.skip(5))
-        btn("⇥", "Go to the out-point (End)", lambda: self.seek(self.project.effective_out()))
+        btn("|▷", "Nudge one frame forward (.)", lambda: self.step_frame(1))
         h.addSpacing(10)
         self.time_label = QLabel("00:00:00.000 / 00:00:00.000")
         self.time_label.setStyleSheet("font-family: Consolas, Menlo, monospace; font-size:13px; color:#f2f2f7;")
         h.addWidget(self.time_label)
         h.addSpacing(12)
-        btn("[ In", "Set the in-point at the playhead (I)", self.set_in, 44)
-        btn("Out ]", "Set the out-point at the playhead (O)", self.set_out, 48)
-        btn("✕", "Clear the trim", self.clear_trim, 26)
+        self.in_btn = btn("[ In", "Set the in-point at the playhead (I)", self.set_in, 44)
+        self.out_btn = btn("Out ]", "Set the out-point at the playhead (O)", self.set_out, 48)
+        self.clear_btn = btn("✕", "Clear the trim", self.clear_trim, 26)
+        self.lock_btn = btn("Lock", "Lock the in- and out-point so they can't be moved by accident (L)", self.toggle_trim_lock, 56)
+        self.lock_btn.setCheckable(True)
         h.addStretch()
         self.overlay_cb = QCheckBox("Comments on video")
         self.overlay_cb.setFocusPolicy(Qt.FocusPolicy.NoFocus)
@@ -410,6 +406,7 @@ class MainWindow(QMainWindow):
         act(p, "Set in-point  (I)", self.set_in)
         act(p, "Set out-point  (O)", self.set_out)
         act(p, "Clear trim", self.clear_trim)
+        act(p, "Lock / unlock in and out  (L)", self.toggle_trim_lock)
 
         hm = mb.addMenu("&Help")
         act(hm, "Keyboard shortcuts", self.show_shortcuts)
@@ -442,7 +439,6 @@ class MainWindow(QMainWindow):
             return
         self.selected_id = cid
         self.list.sync_selection()
-        self.inspector.load()
         self.timeline.update()
         self.video.refresh()
 
@@ -557,6 +553,7 @@ class MainWindow(QMainWindow):
         a.triggered.connect(lambda: self.toggle_on_video(cid))
         r = menu_item(m, "Automatic position (bottom left)", lambda: self.reset_position(cid))
         r.setEnabled(c.has_position)
+        menu_item(m, "Length …", lambda: self._ask_length(cid))
         menu_item(m, "Duplicate", lambda: self._duplicate(cid))
         m.addSeparator()
         menu_item(m, "Delete", lambda: self.delete_comment(cid))
@@ -568,9 +565,18 @@ class MainWindow(QMainWindow):
         m = QMenu(self)
         prof = self.project.profile(pid)
         menu_item(m, f"New comment here ({prof.name if prof else ''}) …", lambda: self.add_comment_dialog(pid, t))
-        menu_item(m, "Set in-point here", lambda: self._set_trim(t, None))
-        menu_item(m, "Set out-point here", lambda: self._set_trim(None, t))
+        a1 = menu_item(m, "Set in-point here", lambda: self._set_trim(t, None))
+        a2 = menu_item(m, "Set out-point here", lambda: self._set_trim(None, t))
+        a1.setEnabled(not self.project.trim_locked)
+        a2.setEnabled(not self.project.trim_locked)
         m.exec(pos)
+
+    def _ask_length(self, cid):
+        c = self.project.comment(cid)
+        if c:
+            v, ok = QInputDialog.getDouble(self, "Length", "How long the comment is shown (seconds):", c.duration, 0.2, 36000, 1)
+            if ok:
+                self.change(lambda: setattr(c, "duration", v), "Change length")
 
     def _duplicate(self, cid):
         c = self.project.comment(cid)
@@ -590,7 +596,6 @@ class MainWindow(QMainWindow):
             self.selected_id = None
         self._rebuild_chips()
         self.list.rebuild()
-        self.inspector.load()
         n = len(p.comments)
         self.count_label.setText(f"Comments ({n})")
         self.overlay_cb.blockSignals(True)
@@ -599,6 +604,13 @@ class MainWindow(QMainWindow):
         self.overlay_act.blockSignals(True)
         self.overlay_act.setChecked(p.overlay_enabled)
         self.overlay_act.blockSignals(False)
+        locked = p.trim_locked
+        self.lock_btn.blockSignals(True)
+        self.lock_btn.setChecked(locked)
+        self.lock_btn.blockSignals(False)
+        self.lock_btn.setText("🔒 Locked" if locked else "Lock")
+        for b in (self.in_btn, self.out_btn, self.clear_btn):
+            b.setEnabled(not locked)
         self.undo_act.setText(f"Undo {self.undo_stack[-1][0]}" if self.undo_stack else "Undo")
         self.undo_act.setEnabled(bool(self.undo_stack))
         self.redo_act.setText(f"Redo {self.redo_stack[-1][0]}" if self.redo_stack else "Redo")
@@ -843,8 +855,20 @@ class MainWindow(QMainWindow):
 
     # ── Trim ──────────────────────────────────────────────────────────────────
 
+    def _trim_locked_note(self) -> bool:
+        if self.project.trim_locked:
+            self.statusBar().showMessage("In and out are locked – click Lock to change them.", 4000)
+            return True
+        return False
+
+    def toggle_trim_lock(self):
+        on = not self.project.trim_locked
+        self.change(lambda: setattr(self.project, "trim_locked", on), "Lock in/out" if on else "Unlock in/out")
+
     def _set_trim(self, tin, tout):
         p = self.project
+        if self._trim_locked_note():
+            return
 
         def fn():
             if tin is not None:
@@ -861,6 +885,9 @@ class MainWindow(QMainWindow):
         self._set_trim(None, self._time)
 
     def clear_trim(self):
+        if self._trim_locked_note():
+            return
+
         def fn():
             self.project.trim_in = 0.0
             self.project.trim_out = None
@@ -1223,6 +1250,7 @@ class MainWindow(QMainWindow):
             "← / →\t5 s back / forward (Shift: 1 s)\n"
             ", / .\tOne frame back / forward\n"
             "I / O\tSet in / out point\n"
+            "L\tLock / unlock in and out\n"
             "Home / End\tGo to in / out point\n"
             "Enter\tWrite a new comment\n"
             "Esc\tCancel the comment you are writing\n"
@@ -1273,6 +1301,8 @@ class MainWindow(QMainWindow):
             self.set_in()
         elif key == K.Key_O:
             self.set_out()
+        elif key == K.Key_L:
+            self.toggle_trim_lock()
         elif key == K.Key_Home:
             self.seek(self.project.trim_in)
         elif key == K.Key_End:

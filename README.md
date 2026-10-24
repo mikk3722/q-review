@@ -4,14 +4,18 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 - **Open** a video, a Q-Review project or a Q-Recorder recording (the `.json` log next to the `.mov`).
   Q-Recorder's chat notes become comments, its roles become profiles. The recording itself is never changed.
-- **Write comments** on the left – as a *profile* (Director, Lighting, Sound, Stage manager … like Q-Recorder's roles).
+- **Write comments** on the left. There is one profile to start with; add more (Director, Lighting, Sound … like
+  Q-Recorder's roles) under *Edit profiles* – or import them from a Q-Recorder project.
+  The small tick on each comment decides whether it is shown on the video.
   The time is held from the moment you start writing, and playback pauses while you write (can be switched off).
 - **Timeline**: one track per profile. Drag comments to move them (also to another profile), drag the edges to change
   the length. Comments snap to the playhead, the trim and each other (hold Alt to turn snapping off).
 - **On the video**: comments are shown as bubbles like Q-Recorder's chat block (bottom left). Drag a bubble to place it
   anywhere; right-click → *Automatic position* puts it back. *Comments on video* turns them all on/off,
   each comment and each profile can also be switched off.
-- **Trim**: drag the yellow handles in the timeline, or press **I** / **O** at the playhead. Nothing is cut until you export.
+- **Trim**: drag the yellow handles in the timeline, or press **I** / **O** at the playhead. **Lock** (or **L**) locks
+  in and out so they can't be moved by accident. Nothing is cut until you export.
+- **Nudge**: the ◁| and |▷ buttons (or , and .) move one frame.
 - **Replace video**: *File → Replace video* keeps all comments (*Edit → Shift all comments* if the new video starts
   at a different point). A project whose video has moved asks you to find it.
 - **Export**:
@@ -29,6 +33,7 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 | ← / → | 5 s back / forward (Shift: 1 s) |
 | , / . | One frame back / forward |
 | I / O | Set in / out point |
+| L | Lock / unlock in and out |
 | Home / End | Go to in / out point |
 | Enter | Write a new comment (Enter adds it, Shift+Enter = new line, Esc = cancel) |
 | Ctrl+1 … 9 | Choose profile |
