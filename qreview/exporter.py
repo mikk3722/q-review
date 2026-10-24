@@ -123,8 +123,10 @@ def write_pdf(project: Project, p: ExportPlan, video_name: str, path: str):
         rows.append(
             f"<tr bgcolor='{bg}'>"
             f"<td bgcolor='{color}' width='5'></td>"
-            f"<td width='96'><span style='font-family:Menlo,Consolas,monospace; font-size:9pt;'>{fmt_precise(t.start)}</span>"
-            f"<br><span style='font-family:Menlo,Consolas,monospace; font-size:7.5pt; color:#888888;'>– {fmt_precise(t.end)}</span></td>"
+            f"<td width='110' style='white-space:nowrap;'>"
+            f"<span style='font-family:Menlo,Consolas,monospace; font-size:9pt; white-space:nowrap;'>{fmt_precise(t.start)}</span>"
+            f"<br><span style='font-family:Menlo,Consolas,monospace; font-size:7.5pt; color:#888888; white-space:nowrap;'>"
+            f"– {fmt_precise(t.end)}</span></td>"
             f"<td width='120'><b style='color:{text_color(color)};'>{name}</b>{who}{off}</td>"
             f"<td>{esc(c.text)}</td></tr>")
     if not rows:
