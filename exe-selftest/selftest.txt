@@ -1,0 +1,24 @@
+PASS ffmpeg found – D:\a\q-review\q-review\dist\Q-Review\_internal\imageio_ffmpeg\binaries\ffmpeg-win-x86_64-v7.1.exe
+PASS test video made
+PASS probe – 12.0 s 1280x720 25.0 fps audio=True
+PASS player loads the video (Qt Multimedia) – duration=12.0
+PASS waveform
+PASS one profile to start with
+PASS comments added
+PASS undo
+PASS trim – 0.5–10.0
+PASS out at the last frame = to the end
+PASS locked trim can't move
+PASS save and reopen
+PASS overlay image
+PASS export burned-in video – 9.52 s in 2.5 s
+PASS export .pdf – 11089 bytes
+PASS export .srt
+PASS export .json
+PASS srt times relative to trim – 00:00:00,500 --> 00:00:05,500
+PASS json is Q-Recorder compatible
+PASS export with subtitle track
+PASS export .csv
+PASS Q-Recorder import
+PASS open Q-Recorder recording in the window
+PASS replace video keeps comments – duration=5.0
