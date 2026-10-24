@@ -1,0 +1,103 @@
+{
+  "app": "Q-Review",
+  "version": 1,
+  "saved": "2026-10-24T14:37:14",
+  "video": {
+    "path": "/var/folders/n6/hn37q6pj7sj_9dmqqc2113800000gn/T/qreview-selftest-qjxosujg/Q-Recorder 2026-10-24 20-00-00.mov",
+    "name": "Q-Recorder 2026-10-24 20-00-00.mov",
+    "relative": "Q-Recorder 2026-10-24 20-00-00.mov"
+  },
+  "trim": {
+    "in": 0.5,
+    "out": 10.0,
+    "locked": true
+  },
+  "overlayEnabled": true,
+  "defaultDuration": 5.0,
+  "style": {
+    "fontScale": 1.0,
+    "maxStacked": 4,
+    "showName": true,
+    "opacity": 0.72
+  },
+  "profiles": [
+    {
+      "id": "2255728b0767",
+      "name": "Notes",
+      "color": "#E5484D",
+      "showOnVideo": true
+    },
+    {
+      "id": "7099ad22efd2",
+      "name": "Lighting",
+      "color": "#F5A524",
+      "showOnVideo": true
+    },
+    {
+      "id": "10dd227c022f",
+      "name": "Sound",
+      "color": "#3E9BFF",
+      "showOnVideo": true
+    },
+    {
+      "id": "181513aed2a4",
+      "name": "Stage manager",
+      "color": "#46A758",
+      "showOnVideo": true
+    }
+  ],
+  "comments": [
+    {
+      "id": "592beab6075a",
+      "profileId": "2255728b0767",
+      "text": "Light cue 12 comes too early",
+      "start": 1.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:01.000",
+      "onVideo": true,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-10-24T14:37:14"
+    },
+    {
+      "id": "8933f386455e",
+      "profileId": "10dd227c022f",
+      "text": "The music fade should be slower – try 5 seconds instead of 3, and keep the vocal on top",
+      "start": 2.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:02.000",
+      "onVideo": true,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-10-24T14:37:14"
+    },
+    {
+      "id": "bade5d3a2c74",
+      "profileId": "7099ad22efd2",
+      "text": "Placed by hand, top right",
+      "start": 2.5,
+      "duration": 5.0,
+      "recordingTime": "00:00:02.500",
+      "onVideo": true,
+      "x": 0.62,
+      "y": 0.08,
+      "author": "",
+      "created": "2026-10-24T14:37:14"
+    },
+    {
+      "id": "ad66e0c585d4",
+      "profileId": "181513aed2a4",
+      "text": "Not on video",
+      "start": 3.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:03.000",
+      "onVideo": false,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-10-24T14:37:14"
+    }
+  ]
+}

@@ -1,0 +1,70 @@
+{
+  "app": "Q-Review",
+  "events": [],
+  "exportedAt": "2026-10-24T14:38:53+00:00",
+  "messages": [
+    {
+      "author": "",
+      "color": "#E5484D",
+      "context": "",
+      "duration": 5.0,
+      "id": 1,
+      "onVideo": true,
+      "recordingTime": "00:00:00.500",
+      "role": "Notes",
+      "seconds": 0.5,
+      "source": "q-review",
+      "text": "Light cue 12 comes too early",
+      "timecode": ""
+    },
+    {
+      "author": "",
+      "color": "#3E9BFF",
+      "context": "",
+      "duration": 5.0,
+      "id": 2,
+      "onVideo": true,
+      "recordingTime": "00:00:01.500",
+      "role": "Sound",
+      "seconds": 1.5,
+      "source": "q-review",
+      "text": "The music fade should be slower – try 5 seconds instead of 3, and keep the vocal on top",
+      "timecode": ""
+    },
+    {
+      "author": "",
+      "color": "#F5A524",
+      "context": "",
+      "duration": 5.0,
+      "id": 3,
+      "onVideo": true,
+      "recordingTime": "00:00:02.000",
+      "role": "Lighting",
+      "seconds": 2.0,
+      "source": "q-review",
+      "text": "Placed by hand, top right",
+      "timecode": ""
+    },
+    {
+      "author": "",
+      "color": "#46A758",
+      "context": "",
+      "duration": 5.0,
+      "id": 4,
+      "onVideo": false,
+      "recordingTime": "00:00:02.500",
+      "role": "Stage manager",
+      "seconds": 2.5,
+      "source": "q-review",
+      "text": "Not on video",
+      "timecode": ""
+    }
+  ],
+  "source": "Q-Recorder 2026-10-24 20-00-00.mov",
+  "timesRelativeToTrim": true,
+  "trim": {
+    "in": 0.5,
+    "out": 10.0
+  },
+  "video": "Export burn.mp4"
+}
