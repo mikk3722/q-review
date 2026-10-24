@@ -214,6 +214,7 @@ class MainWindow(QMainWindow):
         self.input.submitted.connect(self._submit_comment)
         self.input.started.connect(self._input_started)
         self.input.cancelled.connect(self._input_cancelled)
+        self.input.emptied.connect(self._input_cancelled)   # deleted it all again = same as Esc
         self.input.focusChanged.connect(lambda _f: self._style_composer())
         cl.addWidget(self.input)
         row = QHBoxLayout()

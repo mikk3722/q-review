@@ -89,6 +89,7 @@ class CommentInput(QPlainTextEdit):
     submitted = pyqtSignal(str)
     started = pyqtSignal()
     cancelled = pyqtSignal()
+    emptied = pyqtSignal()        # everything written was deleted again
     focusChanged = pyqtSignal(bool)
 
     def __init__(self):
@@ -107,6 +108,8 @@ class CommentInput(QPlainTextEdit):
         empty = not self.toPlainText().strip()
         if self._was_empty and not empty:
             self.started.emit()
+        elif not self._was_empty and empty:
+            self.emptied.emit()
         self._was_empty = empty
 
     def focusInEvent(self, e):
