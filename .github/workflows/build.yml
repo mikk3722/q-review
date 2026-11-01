@@ -156,6 +156,12 @@ jobs:
           if (Test-Path "HKCU:\Software\Classes\QReview.Project") { throw "Uninstall left the file association behind" }
           Write-Output "::notice::Installer: install, Start menu, .qreview association, self-test and uninstall all OK"
 
+      - name: Put the installer in a ZIP (company networks often block .exe downloads)
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "installer-out\Q-Review-Setup.exe" -DestinationPath "Q-Review-Setup.zip"
+          Get-Item Q-Review-Setup.zip | Select-Object Name, Length
+
       - name: Publish self-test results (branch selftest-OS)
         if: always()
         shell: bash
@@ -183,8 +189,8 @@ jobs:
         with:
           name: Q-Review-windows
           path: |
+            Q-Review-Setup.zip
             Q-Review-windows.zip
-            installer-out/Q-Review-Setup.exe
 
   build-macos:
     runs-on: macos-latest
@@ -395,10 +401,9 @@ jobs:
 
             | Platform | Download |
             |---|---|
-            | Windows (installer) | Q-Review-Setup.exe – installs Q-Review with Start menu entry and uninstaller |
+            | Windows (installer) | Q-Review-Setup.zip – unzip and run Q-Review-Setup.exe: installs Q-Review with Start menu entry and uninstaller |
             | Windows (portable) | Q-Review-windows.zip – unzip and run Q-Review.exe, no installation |
             | macOS | Q-Review-macos.dmg |
           files: |
             Q-Review-windows/*.zip
-            Q-Review-windows/**/*.exe
             Q-Review-macos/*.dmg

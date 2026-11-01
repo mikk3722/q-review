@@ -58,7 +58,8 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 See [Releases](../../releases).
 
-- **Windows:** run `Q-Review-Setup.exe`. It asks whether to install for all users (Program Files, needs admin)
+- **Windows:** unzip `Q-Review-Setup.zip` and run `Q-Review-Setup.exe` (the ZIP is because company networks
+  often block .exe downloads). It asks whether to install for all users (Program Files, needs admin)
   or only for you, adds Q-Review to the Start menu, opens `.qreview` projects on double-click and can be removed
   under *Settings → Apps*. Running a newer setup updates the installed version.
   `Q-Review-windows.zip` is the portable version: unzip and run `Q-Review.exe`, nothing is installed.

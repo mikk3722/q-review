@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.5 – 2026-11-01
+- The Windows installer is delivered as `Q-Review-Setup.zip`, because company networks often block downloads
+  of .exe files. The installer inside is signed as before.
+
 ## 0.2.4 – 2026-11-01
 - Windows installer (`Q-Review-Setup.exe`, signed): installs for all users or only you, Start menu entry,
   optional desktop icon, double-click on a `.qreview` project opens it, uninstall under *Settings → Apps*.
