@@ -30,6 +30,7 @@ class ExportOptions:
     crf: int = 20
     max_height: int = 0             # 0 = original
     only_on_video: bool = False     # text files: only comments marked "on video"
+    pdf_template: dict | None = None  # PDF layout (None = Standard)
 
 
 @dataclass
@@ -86,79 +87,10 @@ def make_txt(project: Project, p: ExportPlan, video_name: str) -> str:
     return "\n".join(lines) + "\n"
 
 
-def write_pdf(project: Project, p: ExportPlan, video_name: str, path: str):
-    """A4 PDF: time, role (with its colour), comment – one row per comment."""
-    import html
-    from PyQt6.QtCore import QMarginsF
-    from PyQt6.QtGui import QPdfWriter, QPageSize, QPageLayout, QTextDocument, QFont, QColor
-
-    def esc(t):
-        return html.escape(t).replace("\n", "<br>")
-
-    def text_color(hex_color):
-        c = QColor(hex_color)
-        while c.lightness() > 120:
-            c = c.darker(125)
-        return c.name()
-
-    info = [f"Video: {esc(video_name)}"]
-    src = os.path.basename(project.video_path or "")
-    if src and src != video_name:
-        info.append(f"Source: {esc(src)}")
-    if project.is_trimmed():
-        info.append(f"Trim: {fmt_precise(p.window_start)} – {fmt_precise(p.window_end)}")
-    info.append(f"Exported {datetime.now().strftime('%Y-%m-%d %H:%M')}")
-    info.append(f"{len(p.items)} comment(s)")
-    note = "Times are from the start of the exported (trimmed) video." if p.shift else ""
-
-    rows = []
-    for i, t in enumerate(p.items):
-        c = t.comment
-        prof = project.profile(c.profile_id)
-        color = project.color(c)
-        name = esc(prof.name if prof else "")
-        who = f"<br><span style='color:#777777;'>{esc(c.author)}</span>" if c.author else ""
-        off = "" if c.on_video else "<br><span style='color:#999999;'>not on video</span>"
-        bg = "#ffffff" if i % 2 == 0 else "#f4f4f6"
-        rows.append(
-            f"<tr bgcolor='{bg}'>"
-            f"<td bgcolor='{color}' width='5'></td>"
-            f"<td width='110' style='white-space:nowrap;'>"
-            f"<span style='font-family:Menlo,Consolas,monospace; font-size:9pt; white-space:nowrap;'>{fmt_precise(t.start)}</span>"
-            f"<br><span style='font-family:Menlo,Consolas,monospace; font-size:7.5pt; color:#888888; white-space:nowrap;'>"
-            f"– {fmt_precise(t.end)}</span></td>"
-            f"<td width='120'><b style='color:{text_color(color)};'>{name}</b>{who}{off}</td>"
-            f"<td>{esc(c.text)}</td></tr>")
-    if not rows:
-        rows.append("<tr><td></td><td colspan='3' style='color:#777777;'>No comments.</td></tr>")
-
-    doc_html = (
-        "<html><body style='font-size:10pt; color:#1c1c1e;'>"
-        f"<p style='font-size:17pt; font-weight:bold; margin-bottom:2px;'>{esc(os.path.splitext(video_name)[0])}</p>"
-        f"<p style='color:#666666; font-size:8.5pt; margin-top:0;'>{' &nbsp;·&nbsp; '.join(info)}"
-        + (f"<br>{note}" if note else "") + "</p>"
-        "<table width='100%' cellspacing='0' cellpadding='6' border='0'>"
-        "<thead><tr bgcolor='#1c1c1e'>"
-        "<th width='5'></th>"
-        "<th align='left' style='color:#ffffff;'>Time</th>"
-        "<th align='left' style='color:#ffffff;'>Role</th>"
-        "<th align='left' style='color:#ffffff;'>Comment</th></tr></thead>"
-        + "".join(rows) + "</table>"
-        f"<p style='color:#999999; font-size:7.5pt;'>{APP_NAME}</p>"
-        "</body></html>")
-
-    writer = QPdfWriter(path)
-    writer.setPageSize(QPageSize(QPageSize.PageSizeId.A4))
-    writer.setPageMargins(QMarginsF(15, 15, 15, 15), QPageLayout.Unit.Millimeter)
-    writer.setTitle(f"{os.path.splitext(video_name)[0]} – comments")
-    writer.setCreator(APP_NAME)
-    doc = QTextDocument()
-    f = QFont()
-    f.setPointSizeF(10)
-    doc.setDefaultFont(f)
-    doc.setHtml(doc_html)
-    printer = getattr(doc, "print", None) or getattr(doc, "print_")
-    printer(writer)
+def write_pdf(project: Project, p: ExportPlan, video_name: str, path: str, template: dict | None = None):
+    """The PDF – laid out by a template (see pdfexport.py)."""
+    from . import pdfexport
+    return pdfexport.write_pdf(project, p, video_name, path, template)
 
 
 def make_srt(project: Project, p: ExportPlan) -> str:
@@ -237,7 +169,7 @@ def write_text_files(project: Project, opts: ExportOptions, base: str, video_nam
 
     if opts.pdf:
         path = os.path.join(opts.folder, base + ".pdf")
-        write_pdf(project, p, video_name, path)
+        write_pdf(project, p, video_name, path, opts.pdf_template)
         written.append(path)
     if opts.txt:
         put(".txt", make_txt(project, p, video_name))

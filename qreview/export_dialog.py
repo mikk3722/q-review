@@ -109,6 +109,21 @@ class ExportDialog(QDialog):
             cb.setChecked(default)
             files.addWidget(cb)
         c.addLayout(files)
+        # PDF layout: template + editor
+        lay_row = QHBoxLayout()
+        lay_row.addWidget(QLabel("PDF layout"))
+        self.pdf_combo = QComboBox()
+        self.pdf_combo.setMinimumWidth(200)
+        self.pdf_combo.activated.connect(self._pdf_template_chosen)
+        lay_row.addWidget(self.pdf_combo)
+        edit = QPushButton("Edit layout …")
+        edit.setToolTip("Choose columns, colours, header, footer and logo – and save it as a template")
+        edit.clicked.connect(self._edit_pdf_layout)
+        lay_row.addWidget(edit)
+        lay_row.addStretch()
+        c.addLayout(lay_row)
+        self.pdf.toggled.connect(lambda on: (self.pdf_combo.setEnabled(on), edit.setEnabled(on)))
+        self._load_pdf_template()
         self.json.setToolTip("Same layout as Q-Recorder's log – Q-Recorder's Play mode can open the exported video with it.")
         self.only_video = QCheckBox("Only comments marked \"Show on video\"")
         self.only_video.setChecked(s.value("export/onlyVideo", False, bool))
@@ -152,9 +167,61 @@ class ExportDialog(QDialog):
             use_trim=True, relative_times=True,
             pdf=self.pdf.isChecked(), txt=False, srt=self.srt.isChecked(), csv=self.csv.isChecked(), json=self.json.isChecked(),
             video=self.video_box.isChecked(), comment_mode=mode, crf=int(self.quality.currentData()),
-            max_height=int(self.size.currentData() or 0), only_on_video=self.only_video.isChecked())
+            max_height=int(self.size.currentData() or 0), only_on_video=self.only_video.isChecked(),
+            pdf_template=self.pdf_template)
+
+    # ── PDF template ──
+
+    def _load_pdf_template(self):
+        """The layout used last time (also with changes that were not saved as a template)."""
+        from . import pdfexport as pe
+        import json
+        t = None
+        raw = self.settings.value("export/pdfTemplateJson", "")
+        if raw:
+            try:
+                t = pe.normalize(json.loads(raw))
+            except Exception:
+                t = None
+        self.pdf_template = t or pe.normalize(None)
+        self._fill_pdf_combo()
+
+    def _fill_pdf_combo(self):
+        from . import pdfexport as pe
+        self.pdf_combo.blockSignals(True)
+        self.pdf_combo.clear()
+        names = [t["name"] for t in pe.list_templates()]
+        for n in names:
+            self.pdf_combo.addItem(n, n)
+        cur = self.pdf_template["name"]
+        saved = pe.get_template(cur) if cur in names else None
+        if saved is not None and saved != self.pdf_template:
+            self.pdf_combo.addItem(f"{cur} (changed)", "__current__")
+            self.pdf_combo.setCurrentIndex(self.pdf_combo.count() - 1)
+        else:
+            self.pdf_combo.setCurrentIndex(max(0, self.pdf_combo.findData(cur)))
+        self.pdf_combo.blockSignals(False)
+
+    def _pdf_template_chosen(self, _i):
+        from . import pdfexport as pe
+        name = self.pdf_combo.currentData()
+        if name != "__current__":
+            self.pdf_template = pe.get_template(name)
+            self._fill_pdf_combo()
+
+    def _edit_pdf_layout(self):
+        from .pdf_dialog import PdfLayoutDialog
+        o = self.options()
+        p = exporter.plan(self.project, o)
+        video_name = (o.basename + ".mp4") if o.video else os.path.basename(self.project.video_path or "")
+        dlg = PdfLayoutDialog(self.project, p, video_name, self.pdf_template, self)
+        if dlg.exec():
+            self.pdf_template = dlg.template
+        self._fill_pdf_combo()
 
     def _remember(self, o):
+        import json
+        self.settings.setValue("export/pdfTemplateJson", json.dumps(o.pdf_template or {}, ensure_ascii=False))
         s = self.settings
         s.setValue("export/folder", o.folder)
         s.setValue("export/mode", o.comment_mode)

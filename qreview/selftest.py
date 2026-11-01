@@ -179,6 +179,43 @@ def _run(app, out_dir, work):
     pdfs = [f for f in files if f.endswith(".pdf")]
     check("export .pdf", bool(pdfs) and open(pdfs[0], "rb").read(5) == b"%PDF-" and os.path.getsize(pdfs[0]) > 2000,
           f"{os.path.getsize(pdfs[0]) if pdfs else 0} bytes")
+    # PDF templates: save, list, use (header, footer, logo, grouped, landscape), preview, delete
+    from . import pdfexport as pe
+    os.environ["QREVIEW_TEMPLATE_DIR"] = os.path.join(work, "templates")
+    here = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    logo_path = os.path.join(getattr(__import__("sys"), "_MEIPASS", here), "assets", "icon.png")
+    tpl = pe.normalize({
+        "name": "Rehearsal notes", "title": "{project}", "subtitle": "Notes from the rehearsal",
+        "note": "Dress rehearsal 3 – Bellevue", "summary": True, "group": True, "colorStyle": "both",
+        "landscape": True, "fontSize": 11, "accent": "#2b5797",
+        "columns": [["start", True, "Tid"], ["duration", True, "Længde"], ["comment", True, "Kommentar"],
+                    ["onvideo", True, "På video"]],
+        "header": {"left": "{project}", "center": "", "right": "{date}"},
+        "footer": {"left": "Q-Review {version}", "center": "{trim}", "right": "Side {page} af {pages}"},
+        "logo": pe.logo_from_file(logo_path), "logoPos": "left"})
+    pe.save_template(tpl)
+    names = [t["name"] for t in pe.list_templates()]
+    check("PDF template saved and listed", names[0] == pe.STANDARD and "Rehearsal notes" in names
+          and pe.get_template("Rehearsal notes")["columns"][0][2] == "Tid" and pe.get_template("Rehearsal notes")["logo"])
+    plan_ = exporter.plan(p, opts)
+    tpl_pdf = os.path.join(out_dir, "template-test.pdf")
+    n_pages = pe.write_pdf(p, plan_, "Export burn.mp4", tpl_pdf, pe.get_template("Rehearsal notes"))
+    check("PDF with template (header, footer, logo, groups, landscape)",
+          os.path.getsize(tpl_pdf) > 3000 and open(tpl_pdf, "rb").read(5) == b"%PDF-" and n_pages >= 1, f"{n_pages} page(s)")
+    img, pages = pe.preview(p, plan_, "Export burn.mp4", pe.get_template("Rehearsal notes"))
+    img.save(os.path.join(out_dir, "template-preview.png"))
+    check("PDF preview", not img.isNull() and img.width() > img.height() and pages == n_pages, f"{img.width()}x{img.height()}")
+    # Many comments → several pages, header and footer on each
+    many = Project()
+    many.video_path, many.video_duration = p.video_path, 600
+    for k in range(80):
+        many.comments.append(type(p.comments[0])(many.profiles[0].id, f"Comment number {k + 1} with some text", k * 7.0))
+    big = os.path.join(out_dir, "template-many-pages.pdf")
+    pages_big = pe.write_pdf(many, exporter.plan(many, opts), "many.mp4", big, pe.normalize(None))
+    check("PDF over several pages", pages_big >= 2, f"{pages_big} pages")
+    pe.delete_template("Rehearsal notes")
+    check("PDF template deleted", "Rehearsal notes" not in [t["name"] for t in pe.list_templates()])
+
     for ext in (".srt", ".json"):
         check(f"export {ext}", any(f.endswith(ext) for f in files))
     srt = open([f for f in files if f.endswith(".srt")][0], encoding="utf-8").read()

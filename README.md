@@ -21,7 +21,8 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 - **Export**:
   - Video (MP4, H.264) – comments burned into the picture (exactly as in the preview), as a subtitle track that
     can be switched on/off in the player, or without comments. Original size, 1080p, 720p or 540p.
-  - Comments with timecodes – `.pdf` (time, role with colour, comment), `.srt`, `.csv` (opens in Excel) and `.json`
+  - Comments with timecodes – `.pdf` (layout of your choice: *Edit layout …* – columns, colours, header, footer,
+    logo; saved as templates), `.srt`, `.csv` (opens in Excel) and `.json`
     (Q-Recorder's log format, so Q-Recorder's *Play* mode can open the exported video).
   - Timecodes start at 00:00:00 at the trim in-point, so they match the exported video.
 
@@ -120,7 +121,9 @@ qreview/panels.py        ← left side: profiles, writing comments, list, select
 qreview/timeline.py      ← timeline with tracks, drag, trim
 qreview/videoview.py     ← video with draggable bubbles
 qreview/overlay.py       ← draws the bubbles (preview and export use the same code)
-qreview/exporter.py      ← TXT/SRT/CSV/JSON and the FFmpeg command
+qreview/exporter.py      ← SRT/CSV/JSON and the FFmpeg command
+qreview/pdfexport.py     ← PDF with templates (header, footer, logo, columns)
+qreview/pdf_dialog.py    ← the PDF layout dialog with preview
 qreview/export_dialog.py ← export dialog with progress
 qreview/media.py         ← FFmpeg: finding it, video info, waveform
 qreview/selftest.py      ← automatic test (run by the build)

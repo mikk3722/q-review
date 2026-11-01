@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.2.6 – not released yet
+- PDF layout (*Export → Edit layout …*) with a live preview: columns (on/off, order, own headings),
+  title, subtitle and note, info line, summary per role, one section per role, role colour as stripe and/or
+  coloured name, table heading colour, paper size, orientation, text size, margins, header and footer
+  (left / centre / right with {page}, {pages}, {date}, {project} …) and a logo.
+- Layouts can be saved as templates, deleted, and exported/imported as `.qrtemplate` files to share.
+  The layout used last time is remembered.
+
 ## 0.2.5 – 2026-11-01
 - Export: if an export with the same name exists, Q-Review asks – *Replace*, *Keep both* (the new one gets a
   number) or *Cancel*. When replacing, the old video is kept until the new one is finished.
