@@ -280,7 +280,8 @@ def _column_widths(project, items, cols, t, dpi: float, page_width: float) -> di
     total = sum(widths.values())
     if total > limit > 0:
         widths = {k: v * limit / total for k, v in widths.items()}
-    return {k: int(v) for k, v in widths.items()}
+    # As a percentage of the page: pixel widths are read differently by the PDF writer on Windows and macOS
+    return {k: round(v / page_width * 100, 2) for k, v in widths.items()}
 
 
 def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300,
@@ -295,7 +296,6 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi:
         cols = [["comment", True, "Comment"]]
     has_comment = any(c[0] == "comment" for c in cols)
     accent = QColor(t.get("accent") or "#1c1c1e")
-    stripe_px = max(3, int(round(dpi * 0.07)))     # about 1.8 mm
     widths = _column_widths(project, plan.items, cols, t, dpi, page_width) \
         if page_width > 0 and any(c[0] == "comment" for c in cols) else {}
     head_text = "#ffffff" if accent.lightness() < 140 else "#000000"
@@ -325,11 +325,11 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi:
     def table(items) -> str:
         head = ["<table width='100%' cellspacing='0' cellpadding='5' border='0'>", f"<thead><tr bgcolor='{accent.name()}'>"]
         if stripe:
-            head.append(f"<th width='{stripe_px}'></th>")
+            head.append("<th width='0.8%'></th>")
         for key, _on, label in cols:
             # Only the comment may wrap; the other columns get exactly the width their content needs
             text = _esc(label) if key == "comment" else _nobreak(_esc(label))
-            width = f" width='{widths[key]}'" if key in widths else ""
+            width = f" width='{widths[key]}%'" if key in widths else ""
             head.append(f"<th align='left'{width} style='color:{head_text};'>{text}</th>")
         head.append("</tr></thead>")
         rows = []
