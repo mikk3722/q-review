@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.2.5 – 2026-11-01
+- Export: if an export with the same name exists, Q-Review asks – *Replace*, *Keep both* (the new one gets a
+  number) or *Cancel*. When replacing, the old video is kept until the new one is finished.
 - The Windows installer is delivered as `Q-Review-Setup.zip`, because company networks often block downloads
   of .exe files. The installer inside is signed as before.
 

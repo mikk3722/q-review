@@ -181,19 +181,50 @@ class ExportDialog(QDialog):
         self._remember(o)
         self.settings.setValue("export/ownFolder", self.own_folder.isChecked())
         clean = "".join(ch for ch in o.basename if ch not in '<>:"/\\|?*').strip() or "Export"
-        if self.own_folder.isChecked():
+        exts = [".pdf", ".txt", ".srt", ".csv", ".json"] + ([".mp4"] if o.video else [])
+        own = self.own_folder.isChecked()
+
+        # Does an export with this name exist already? Then ask.
+        if own:
+            target = os.path.join(o.folder, clean)
+            exists = os.path.isdir(target) and bool(os.listdir(target))
+            what = f"The folder \"{clean}\" already exists in\n{o.folder}"
+        else:
+            found = [clean + e for e in exts if os.path.exists(os.path.join(o.folder, clean + e))]
+            exists = bool(found)
+            what = "These files already exist:\n" + "\n".join(found)
+        overwrite = False
+        if exists:
+            box = QMessageBox(self)
+            box.setIcon(QMessageBox.Icon.Question)
+            box.setWindowTitle("Export")
+            box.setText("An export with this name already exists.")
+            box.setInformativeText(what + "\n\nReplace it, or keep both (the new one gets a number)?")
+            replace = box.addButton("Replace", QMessageBox.ButtonRole.DestructiveRole)
+            keep = box.addButton("Keep both", QMessageBox.ButtonRole.AcceptRole)
+            box.addButton(QMessageBox.StandardButton.Cancel)
+            box.setDefaultButton(keep)
+            box.exec()
+            if box.clickedButton() == replace:
+                overwrite = True
+            elif box.clickedButton() != keep:
+                self.name.setFocus()
+                self.name.selectAll()
+                return
+
+        if own:
             folder, n = os.path.join(o.folder, clean), 2
-            while os.path.exists(folder):
-                folder, n = os.path.join(o.folder, f"{clean} {n}"), n + 1
+            if not overwrite:
+                while os.path.exists(folder) and os.listdir(folder):
+                    folder, n = os.path.join(o.folder, f"{clean} {n}"), n + 1
             try:
-                os.makedirs(folder)
+                os.makedirs(folder, exist_ok=True)
             except OSError as e:
                 QMessageBox.warning(self, "Export", f"Could not make the folder:\n{e}")
                 return
             o.folder = folder
         self.export_folder = o.folder
-        exts = [".pdf", ".txt", ".srt", ".csv", ".json"] + ([".mp4"] if o.video else [])
-        base = exporter.unique_base(o.folder, "".join(ch for ch in o.basename if ch not in '<>:"/\\|?*'), exts)
+        base = clean if overwrite else exporter.unique_base(o.folder, clean, exts)
         self.out_files = []
         video_name = base + ".mp4" if o.video else os.path.basename(self.project.video_path or "")
         try:
@@ -209,13 +240,15 @@ class ExportDialog(QDialog):
         self.status.setText("Preparing the comments …")
         self.repaint()
         out = os.path.join(o.folder, base + ".mp4")
+        self.video_final = out
+        part = os.path.join(o.folder, base + ".partial.mp4")   # the old video stays until the new one is done
         try:
-            cmd, self.length = exporter.build_video_command(self.project, o, out, self.work)
+            cmd, self.length = exporter.build_video_command(self.project, o, part, self.work)
         except Exception as e:
             self._cleanup()
             QMessageBox.warning(self, "Export", f"Could not prepare the export:\n{e}")
             return
-        self.video_out = out
+        self.video_out = part
         self.proc = QProcess(self)
         self.proc.setWorkingDirectory(self.work)
         self.proc.setProcessChannelMode(QProcess.ProcessChannelMode.SeparateChannels)
@@ -250,6 +283,13 @@ class ExportDialog(QDialog):
     def _finished(self, code, _status):
         ok = code == 0 and os.path.exists(self.video_out)
         self.proc = None
+        if ok:
+            try:
+                os.replace(self.video_out, self.video_final)
+                self.video_out = self.video_final
+            except OSError as e:
+                ok = False
+                self.errors += f"\nCould not put the video in place: {e}"
         if ok:
             self.out_files.insert(0, self.video_out)
         self._done(ok, self.errors)
