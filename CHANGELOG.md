@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.4 – not released yet
+## 0.2.4 – 2026-11-01
 - The window and panel sizes stay put (switching profile no longer moves them) and are remembered between
   starts; a saved project also remembers its window and panel sizes.
 - Toolbar at the top: Open, Save, Comments on video, Look … and Export.
