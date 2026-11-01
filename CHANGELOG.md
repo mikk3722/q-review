@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.2.3 – 2026-11-01
+- The Windows version is signed (Azure Artifact Signing, "Mikkel Peter Larsen"), so Smart App Control
+  lets it start. SmartScreen may still warn on the first downloads until the signature has built up reputation.
+
 ## 0.2.2 – 2026-10-24
 - The macOS version is signed with Developer ID and notarised by Apple (app and DMG), so it opens with a
   normal double-click.
