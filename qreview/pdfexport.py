@@ -237,7 +237,42 @@ def _nobreak(s: str) -> str:
     return s.replace(" ", "&nbsp;").replace("-", "&#8209;")
 
 
-def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300) -> str:
+def _column_widths(project, items, cols, t, device) -> dict:
+    """The width each short column needs (widest heading or value), the same in every table of the PDF."""
+    base = QFont()
+    base.setPointSizeF(t["fontSize"])
+    bold = QFont(base)
+    bold.setBold(True)
+    mono = QFont(base)
+    mono.setFamilies(["Menlo", "Consolas", "Courier New"])
+    mono.setStyleHint(QFont.StyleHint.Monospace)
+    fm = {"base": QFontMetricsF(base, device), "bold": QFontMetricsF(bold, device), "mono": QFontMetricsF(mono, device)}
+    pad = 10 + device.logicalDpiX() * 0.05          # cell padding + a little air
+    widths = {}
+    for key, _on, label in cols:
+        if key == "comment":
+            continue
+        w = fm["bold"].horizontalAdvance(label)
+        for tc in items:
+            c = tc.comment
+            if key == "start":
+                w = max(w, fm["mono"].horizontalAdvance(fmt_precise(tc.start)))
+            elif key == "end":
+                w = max(w, fm["mono"].horizontalAdvance(fmt_precise(tc.end)))
+            elif key == "duration":
+                w = max(w, fm["mono"].horizontalAdvance(f"{tc.end - tc.start:.1f} s"))
+            elif key == "role":
+                prof = project.profile(c.profile_id)
+                w = max(w, fm["bold"].horizontalAdvance(prof.name if prof else ""))
+            elif key == "author":
+                w = max(w, fm["base"].horizontalAdvance(c.author or ""))
+            elif key == "onvideo":
+                w = max(w, fm["base"].horizontalAdvance("✓"))
+        widths[key] = int(w + pad + 1)
+    return widths
+
+
+def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300, device=None) -> str:
     cs = t["colorStyle"]
     stripe = cs in ("stripe", "both")
     colored = cs in ("text", "both")
@@ -249,6 +284,8 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi:
     has_comment = any(c[0] == "comment" for c in cols)
     accent = QColor(t.get("accent") or "#1c1c1e")
     stripe_px = max(3, int(round(dpi * 0.07)))     # about 1.8 mm
+    widths = _column_widths(project, plan.items, cols, t, device) \
+        if device is not None and any(c[0] == "comment" for c in cols) else {}
     head_text = "#ffffff" if accent.lightness() < 140 else "#000000"
 
     def cell(key, tc):
@@ -280,7 +317,8 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi:
         for key, _on, label in cols:
             # Only the comment may wrap; the other columns get exactly the width their content needs
             text = _esc(label) if key == "comment" else _nobreak(_esc(label))
-            head.append(f"<th align='left' style='color:{head_text};'>{text}</th>")
+            width = f" width='{widths[key]}'" if key in widths else ""
+            head.append(f"<th align='left'{width} style='color:{head_text};'>{text}</th>")
         head.append("</tr></thead>")
         rows = []
         for i, tc in enumerate(items):
@@ -368,7 +406,7 @@ class _Pages:
         self.doc.setDefaultFont(f)
         self.doc.setDocumentMargin(0)
         self.doc.setPageSize(QSizeF(self.W, self.ch))
-        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx, device.logicalDpiX()))
+        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx, device.logicalDpiX(), device))
         self.pages = max(1, self.doc.pageCount())
 
     def draw(self, painter: QPainter, i: int):
