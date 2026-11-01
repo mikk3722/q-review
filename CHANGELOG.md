@@ -7,6 +7,9 @@
   (left / centre / right with {page}, {pages}, {date}, {project} …) and a logo.
 - Layouts can be saved as templates, deleted, and exported/imported as `.qrtemplate` files to share.
   The layout used last time is remembered.
+- The layout dialog is one page in plain words; a ＋ button by each field inserts page number, date,
+  project name … Quick buttons for page numbers and header. Short columns (time, length, role …) never break
+  over two lines – only the comment wraps.
 
 ## 0.2.5 – 2026-11-01
 - Export: if an export with the same name exists, Q-Review asks – *Replace*, *Keep both* (the new one gets a

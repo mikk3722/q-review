@@ -232,7 +232,12 @@ def _readable(hex_color: str) -> str:
     return c.name()
 
 
-def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict) -> str:
+def _nobreak(s: str) -> str:
+    """Short cells and headings never break over two lines: non-breaking spaces and hyphens."""
+    return s.replace(" ", "&nbsp;").replace("-", "&#8209;")
+
+
+def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300) -> str:
     cs = t["colorStyle"]
     stripe = cs in ("stripe", "both")
     colored = cs in ("text", "both")
@@ -243,24 +248,25 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict) -> s
         cols = [["comment", True, "Comment"]]
     has_comment = any(c[0] == "comment" for c in cols)
     accent = QColor(t.get("accent") or "#1c1c1e")
+    stripe_px = max(3, int(round(dpi * 0.07)))     # about 1.8 mm
     head_text = "#ffffff" if accent.lightness() < 140 else "#000000"
 
     def cell(key, tc):
         c = tc.comment
         prof = project.profile(c.profile_id)
-        mono = "font-family:Menlo,Consolas,'Courier New',monospace; white-space:nowrap;"
+        mono = "font-family:Menlo,Consolas,'Courier New',monospace;"
         if key == "start":
             return f"<span style=\"{mono}\">{fmt_precise(tc.start)}</span>"
         if key == "end":
             return f"<span style=\"{mono} color:#666666;\">{fmt_precise(tc.end)}</span>"
         if key == "duration":
-            return f"<span style=\"{mono}\">{tc.end - tc.start:.1f} s</span>"
+            return f"<span style=\"{mono}\">{tc.end - tc.start:.1f}&nbsp;s</span>"
         if key == "role":
-            name = _esc(prof.name if prof else "")
+            name = _nobreak(_esc(prof.name if prof else ""))
             color = _readable(project.color(c)) if colored else "#1c1c1e"
             return f"<b style='color:{color};'>{name}</b>"
         if key == "author":
-            return _esc(c.author)
+            return _nobreak(_esc(c.author))
         if key == "comment":
             return _esc(c.text)
         if key == "onvideo":
@@ -270,11 +276,11 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict) -> s
     def table(items) -> str:
         head = ["<table width='100%' cellspacing='0' cellpadding='5' border='0'>", f"<thead><tr bgcolor='{accent.name()}'>"]
         if stripe:
-            head.append("<th width='1%'></th>")
+            head.append(f"<th width='{stripe_px}'></th>")
         for key, _on, label in cols:
-            w = COLUMNS[key][1]
-            width = f" width='{w}%'" if key != "comment" and has_comment else ""
-            head.append(f"<th align='left'{width} style='color:{head_text};'>{_esc(label)}</th>")
+            # Only the comment may wrap; the other columns get exactly the width their content needs
+            text = _esc(label) if key == "comment" else _nobreak(_esc(label))
+            head.append(f"<th align='left' style='color:{head_text};'>{text}</th>")
         head.append("</tr></thead>")
         rows = []
         for i, tc in enumerate(items):
@@ -362,7 +368,7 @@ class _Pages:
         self.doc.setDefaultFont(f)
         self.doc.setDocumentMargin(0)
         self.doc.setPageSize(QSizeF(self.W, self.ch))
-        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx))
+        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx, device.logicalDpiX()))
         self.pages = max(1, self.doc.pageCount())
 
     def draw(self, painter: QPainter, i: int):
