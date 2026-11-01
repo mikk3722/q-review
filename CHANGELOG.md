@@ -1,6 +1,8 @@
 # Changelog
 
 ## 0.2.4 – 2026-11-01
+- Autosave: a saved project is saved by itself a moment after each change (*File → Autosave*, on by default).
+  Unsaved work is kept in a recovery file, and Q-Review offers to restore it if it was not closed properly.
 - The window and panel sizes stay put (switching profile no longer moves them) and are remembered between
   starts; a saved project also remembers its window and panel sizes.
 - Toolbar at the top: Open, Save, Comments on video, Look … and Export.

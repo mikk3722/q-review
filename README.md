@@ -45,6 +45,9 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 ## Files
 
+- **Autosave**: a saved project is saved automatically a moment after each change (*File → Autosave*).
+  Work that has not been saved yet is kept in a recovery file and offered back after a crash.
+
 - *File → Save as folder with video* makes one folder with the project and a copy of the video – easy to move
   or hand on. The export can also put all its files in a new folder (on by default).
 

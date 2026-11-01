@@ -131,6 +131,28 @@ def _run(app, out_dir, work):
     check("scrubbing ends on the playhead", abs(win.player.position() / 1000 - 4.2) < 0.15 and win._seek_target is None,
           f"player at {win.player.position() / 1000:.2f}")
 
+    # Autosave: a saved project is written by itself; an unsaved one goes to the recovery file
+    p.path = proj_path
+    before = os.path.getmtime(proj_path)
+    time.sleep(1.1)
+    win.add_comment("autosaved", 5.0)
+    wait(app, 5, lambda: not win.dirty)
+    check("autosave of a saved project", not win.dirty and os.path.getmtime(proj_path) > before
+          and any(c.text == "autosaved" for c in Project.load(proj_path).comments))
+    win.undo()
+    wait(app, 5, lambda: not win.dirty)
+    p.path = None
+    win._clear_recovery()
+    win.add_comment("recover me", 5.5)
+    win._autosave()
+    rec = win.recovery_path()
+    check("recovery file for an unsaved project", os.path.exists(rec)
+          and any(c.text == "recover me" for c in Project.load(rec).comments))
+    win.undo()
+    win._clear_recovery()
+    p.path = proj_path
+    win._set_dirty(False)
+
     # Screenshot with the bubbles
     win.seek(2.7)
     win.select(c3.id)

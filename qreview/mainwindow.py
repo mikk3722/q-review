@@ -182,8 +182,14 @@ class MainWindow(QMainWindow):
         self._layout_timer.setSingleShot(True)
         self._layout_timer.setInterval(600)
         self._layout_timer.timeout.connect(self._save_layout_settings)
+        # Autosave: a saved project is saved a moment after each change; an unsaved one goes to a recovery file
+        self._autosave_timer = QTimer(self)
+        self._autosave_timer.setSingleShot(True)
+        self._autosave_timer.setInterval(2500)
+        self._autosave_timer.timeout.connect(self._autosave)
         self.refresh_all()
         self._update_title()
+        QTimer.singleShot(400, self._offer_recovery)
 
     # ── UI ────────────────────────────────────────────────────────────────────
 
@@ -403,6 +409,9 @@ class MainWindow(QMainWindow):
         self.save_act = act(f, "Save", self.save, "Ctrl+S")
         act(f, "Save as …", self.save_as, "Ctrl+Shift+S")
         act(f, "Save as folder with video …", self.save_as_folder)
+        self.autosave_act = act(f, "Autosave", lambda on: self.settings.setValue("autosave", on), checkable=True)
+        self.autosave_act.setChecked(self.autosave_enabled())
+        self.autosave_act.setToolTip("Save the project automatically a moment after each change")
         f.addSeparator()
         act(f, "Open video …", self.open_video_dialog)
         act(f, "Replace video …", self.replace_video_dialog, "Ctrl+R")
@@ -1117,6 +1126,84 @@ class MainWindow(QMainWindow):
     def _set_dirty(self, d: bool):
         self.dirty = d
         self._update_title()
+        if hasattr(self, "_autosave_timer"):
+            if d:
+                self._autosave_timer.start()
+            else:
+                self._autosave_timer.stop()
+
+    # ── Autosave and recovery ──
+
+    @staticmethod
+    def recovery_path() -> str:
+        from PyQt6.QtCore import QStandardPaths
+        base = QStandardPaths.writableLocation(QStandardPaths.StandardLocation.AppLocalDataLocation) \
+            or os.path.join(os.path.expanduser("~"), ".q-review")
+        os.makedirs(base, exist_ok=True)
+        return os.path.join(base, "recovery" + FILE_EXT)
+
+    def autosave_enabled(self) -> bool:
+        return self.settings.value("autosave", True, bool)
+
+    def _autosave(self):
+        """Saves without asking. Projects without a file (or with autosave off) go to the recovery file."""
+        p = self.project
+        if not self.dirty or not (p.video_path or p.comments):
+            return
+        if p.path and self.autosave_enabled():
+            if self.save(quiet=True):
+                from datetime import datetime
+                self.statusBar().showMessage(f"Autosaved {datetime.now().strftime('%H:%M:%S')}", 3000)
+                return
+        try:
+            import json
+            data = p.to_json()
+            data["recoveryOf"] = p.path
+            tmp = self.recovery_path() + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as f:
+                json.dump(data, f, ensure_ascii=False)
+            os.replace(tmp, self.recovery_path())
+        except Exception as e:
+            print(f"Recovery file not written: {e}", flush=True)
+
+    def _clear_recovery(self):
+        try:
+            os.remove(self.recovery_path())
+        except OSError:
+            pass
+
+    def _offer_recovery(self):
+        path = self.recovery_path()
+        if self.quiet or not os.path.exists(path):
+            return
+        try:
+            import json
+            from datetime import datetime
+            with open(path, encoding="utf-8") as f:
+                root = json.load(f)
+            when = datetime.fromtimestamp(os.path.getmtime(path)).strftime("%d-%m-%Y %H:%M")
+            original = root.get("recoveryOf")
+            name = os.path.basename(original) if original else os.path.basename((root.get("video") or {}).get("path") or "")
+            n = len(root.get("comments") or [])
+        except Exception:
+            self._clear_recovery()
+            return
+        r = QMessageBox.question(
+            self, "Restore unsaved work?",
+            f"Q-Review was closed without saving the last changes ({when}).\n\n"
+            f"{name or 'Untitled'} – {n} comment(s)\n\nRestore them?",
+            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No, QMessageBox.StandardButton.Yes)
+        if r != QMessageBox.StandardButton.Yes:
+            self._clear_recovery()
+            return
+        try:
+            proj = Project.load(path)
+        except Exception as e:
+            QMessageBox.warning(self, APP_NAME, f"The work could not be restored:\n{e}")
+            return
+        proj.path = original if original else None
+        self._set_project(proj, dirty=True)
+        self.statusBar().showMessage("Restored – save to keep it.", 8000)
 
     def _update_title(self):
         p = self.project
@@ -1346,18 +1433,23 @@ class MainWindow(QMainWindow):
         if path == self.project.video_path:
             self.timeline.set_waveform(png)
 
-    def save(self) -> bool:
+    def save(self, quiet: bool = False) -> bool:
         if not self.project.path:
-            return self.save_as()
+            return False if quiet else self.save_as()
         self.project.ui = self.current_layout()
         try:
             self.project.save(self.project.path)
         except Exception as e:
+            if quiet:
+                print(f"Autosave failed: {e}", flush=True)
+                return False
             QMessageBox.warning(self, APP_NAME, f"Could not save:\n{e}")
             return False
         self._set_dirty(False)
-        self._add_recent(self.project.path)
-        self.statusBar().showMessage(f"Saved {os.path.basename(self.project.path)}", 4000)
+        self._clear_recovery()
+        if not quiet:
+            self._add_recent(self.project.path)
+            self.statusBar().showMessage(f"Saved {os.path.basename(self.project.path)}", 4000)
         return True
 
     def save_as(self) -> bool:
@@ -1601,5 +1693,7 @@ class MainWindow(QMainWindow):
             e.ignore()
             return
         self._save_layout_settings()
+        self._autosave_timer.stop()
+        self._clear_recovery()   # closed on purpose: nothing to restore next time
         self.player.stop()
         e.accept()
