@@ -862,11 +862,16 @@ class MainWindow(QMainWindow):
     def _state_changed(self, state):
         playing = state == QMediaPlayer.PlaybackState.PlayingState
         self.play_btn.setText("❚❚" if playing else "▶")
+        was_playing = getattr(self, "_was_playing", False)
+        self._was_playing = playing
         if playing:
             self.timer.start()
         else:
             self.timer.stop()
-            self._time = self.player.position() / 1000
+            # Only take the player's position when it has been playing – after a seek the playhead is
+            # already right, and the player may not have caught up yet.
+            if was_playing and self._seek_target is None and not self._seek_busy:
+                self._time = self.player.position() / 1000
             self._refresh_time()
 
     def _tick(self):

@@ -133,7 +133,8 @@ def _run(app, out_dir, work):
     wait(app, 2.0, lambda: not win._seek_busy)
     check("scrubbing does not queue up seeks", sent < 30, f"{sent} of 30 sent to the player")
     check("scrubbing ends on the playhead", win._last_seek_ms == 4200 and win._seek_target is None
-          and abs(win.current_time() - 4.2) < 0.001, f"player reports {win.player.position() / 1000:.2f} s")
+          and abs(win.current_time() - 4.2) < 0.001,
+          f"requested {win._last_seek_ms} ms, playhead {win.current_time():.3f} s, player reports {win.player.position() / 1000:.2f} s")
 
     # Autosave: a saved project is written by itself; an unsaved one goes to the recovery file
     p.path = proj_path
