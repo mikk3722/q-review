@@ -237,8 +237,15 @@ def _nobreak(s: str) -> str:
     return s.replace(" ", "&nbsp;").replace("-", "&#8209;")
 
 
-def _column_widths(project, items, cols, t, device) -> dict:
-    """The width each short column needs (widest heading or value), the same in every table of the PDF."""
+def _column_widths(project, items, cols, t, dpi: float, page_width: float) -> dict:
+    """The width each short column needs (widest heading or value), the same in every table of the PDF.
+
+    Measured on an image with the same resolution (font metrics straight from a PDF writer are not reliable
+    on every platform), and together never more than 60 % of the page, so the comment always has room."""
+    device = QImage(4, 4, QImage.Format.Format_RGB32)
+    dpm = int(round(dpi / 0.0254))
+    device.setDotsPerMeterX(dpm)
+    device.setDotsPerMeterY(dpm)
     base = QFont()
     base.setPointSizeF(t["fontSize"])
     bold = QFont(base)
@@ -247,7 +254,7 @@ def _column_widths(project, items, cols, t, device) -> dict:
     mono.setFamilies(["Menlo", "Consolas", "Courier New"])
     mono.setStyleHint(QFont.StyleHint.Monospace)
     fm = {"base": QFontMetricsF(base, device), "bold": QFontMetricsF(bold, device), "mono": QFontMetricsF(mono, device)}
-    pad = 10 + device.logicalDpiX() * 0.05          # cell padding + a little air
+    pad = 10 + dpi * 0.05                           # cell padding + a little air
     widths = {}
     for key, _on, label in cols:
         if key == "comment":
@@ -268,11 +275,16 @@ def _column_widths(project, items, cols, t, device) -> dict:
                 w = max(w, fm["base"].horizontalAdvance(c.author or ""))
             elif key == "onvideo":
                 w = max(w, fm["base"].horizontalAdvance("✓"))
-        widths[key] = int(w + pad + 1)
-    return widths
+        widths[key] = w + pad + 1
+    limit = page_width * 0.6
+    total = sum(widths.values())
+    if total > limit > 0:
+        widths = {k: v * limit / total for k, v in widths.items()}
+    return {k: int(v) for k, v in widths.items()}
 
 
-def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300, device=None) -> str:
+def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi: float = 300,
+               page_width: float = 0) -> str:
     cs = t["colorStyle"]
     stripe = cs in ("stripe", "both")
     colored = cs in ("text", "both")
@@ -284,8 +296,8 @@ def build_html(project: Project, plan, video_name: str, t: dict, ctx: dict, dpi:
     has_comment = any(c[0] == "comment" for c in cols)
     accent = QColor(t.get("accent") or "#1c1c1e")
     stripe_px = max(3, int(round(dpi * 0.07)))     # about 1.8 mm
-    widths = _column_widths(project, plan.items, cols, t, device) \
-        if device is not None and any(c[0] == "comment" for c in cols) else {}
+    widths = _column_widths(project, plan.items, cols, t, dpi, page_width) \
+        if page_width > 0 and any(c[0] == "comment" for c in cols) else {}
     head_text = "#ffffff" if accent.lightness() < 140 else "#000000"
 
     def cell(key, tc):
@@ -406,7 +418,7 @@ class _Pages:
         self.doc.setDefaultFont(f)
         self.doc.setDocumentMargin(0)
         self.doc.setPageSize(QSizeF(self.W, self.ch))
-        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx, device.logicalDpiX(), device))
+        self.doc.setHtml(build_html(project, plan, video_name, t, self.ctx, device.logicalDpiX(), self.W))
         self.pages = max(1, self.doc.pageCount())
 
     def draw(self, painter: QPainter, i: int):
