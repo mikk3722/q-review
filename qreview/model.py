@@ -121,6 +121,7 @@ class Project:
         self.trim_in: float = 0.0
         self.trim_out: float | None = None    # None = end of video
         self.trim_locked: bool = False
+        self.ui: dict | None = None            # window and panel sizes (saved with the project)
         self.overlay_enabled: bool = True     # "comments on video" (global)
         self.default_duration: float = 5.0
         self.style = OverlayStyle()
@@ -235,6 +236,7 @@ class Project:
                      "locked": self.trim_locked},
             "overlayEnabled": self.overlay_enabled,
             "defaultDuration": self.default_duration,
+            "layout": self.ui,
             "style": {"fontScale": self.style.font_scale, "maxStacked": self.style.max_stacked,
                       "showName": self.style.show_name, "opacity": self.style.opacity},
             "profiles": [{"id": p.id, "name": p.name, "color": p.color, "showOnVideo": p.show_on_video}
@@ -280,6 +282,7 @@ class Project:
         p.trim_locked = bool(trim.get("locked", False))
         p.overlay_enabled = bool(root.get("overlayEnabled", True))
         p.default_duration = float(root.get("defaultDuration", 5.0))
+        p.ui = root.get("layout") if isinstance(root.get("layout"), dict) else None
         st = root.get("style") or {}
         p.style = OverlayStyle(font_scale=float(st.get("fontScale", 1.0)),
                                max_stacked=int(st.get("maxStacked", 4)),

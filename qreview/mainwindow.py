@@ -143,7 +143,7 @@ class MainWindow(QMainWindow):
         self.player = QMediaPlayer(self)
         self.audio = QAudioOutput(self)
         self.player.setAudioOutput(self.audio)
-        self.audio.setVolume(float(self.settings.value("volume", 0.8)))
+        self.audio.setVolume(1.0)
         self.player.durationChanged.connect(self._duration_changed)
         self.player.playbackStateChanged.connect(self._state_changed)
         self.player.errorOccurred.connect(self._media_error)
@@ -158,11 +158,30 @@ class MainWindow(QMainWindow):
         self._build_ui()
         self._build_menus()
         self.player.setVideoOutput(self.video.video_item)
+        self._seek_target = None
+        self._seek_busy = False
+        self._seek_fallback = QTimer(self)
+        self._seek_fallback.setSingleShot(True)
+        self._seek_fallback.setInterval(250)
+        self._seek_fallback.timeout.connect(self._seek_done)
+        try:
+            self.video.video_item.videoSink().videoFrameChanged.connect(self._seek_done)
+        except Exception:
+            pass
         QApplication.instance().installEventFilter(self)
 
+        # Window size and the sizes of the panels, as last time
         geo = self.settings.value("geometry")
         if geo is not None:
             self.restoreGeometry(geo)
+        for key, sp in (("splitTop", self.top_split), ("splitMain", self.main_split)):
+            st = self.settings.value(key)
+            if st is not None:
+                sp.restoreState(st)
+        self._layout_timer = QTimer(self)
+        self._layout_timer.setSingleShot(True)
+        self._layout_timer.setInterval(600)
+        self._layout_timer.timeout.connect(self._save_layout_settings)
         self.refresh_all()
         self._update_title()
 
@@ -188,6 +207,9 @@ class MainWindow(QMainWindow):
         head.addWidget(manage)
         lv.addLayout(head)
         self.chips_box = QWidget()
+        pol = QSizePolicy(QSizePolicy.Policy.Preferred, QSizePolicy.Policy.Preferred)
+        pol.setHeightForWidth(True)
+        self.chips_box.setSizePolicy(pol)
         self.chips = FlowLayout(self.chips_box)
         lv.addWidget(self.chips_box)
 
@@ -253,7 +275,7 @@ class MainWindow(QMainWindow):
         cv.addWidget(self.stack, 1)
         cv.addWidget(self._transport())
 
-        top = QSplitter(Qt.Orientation.Horizontal)
+        top = self.top_split = QSplitter(Qt.Orientation.Horizontal)
         top.addWidget(left)
         top.addWidget(center)
         top.setStretchFactor(0, 0)
@@ -262,12 +284,15 @@ class MainWindow(QMainWindow):
 
         self.timeline_panel = TimelinePanel(self)
         self.timeline = self.timeline_panel.timeline
-        main = QSplitter(Qt.Orientation.Vertical)
+        main = self.main_split = QSplitter(Qt.Orientation.Vertical)
         main.addWidget(top)
         main.addWidget(self.timeline_panel)
         main.setStretchFactor(0, 1)
         main.setStretchFactor(1, 0)
         main.setSizes([600, 230])
+        for sp in (top, main):
+            sp.setChildrenCollapsible(False)
+            sp.splitterMoved.connect(lambda *_: self._layout_changed())
         self.setCentralWidget(main)
         self.statusBar().setSizeGripEnabled(True)
 
@@ -347,17 +372,6 @@ class MainWindow(QMainWindow):
         self.lock_btn = btn("Lock", "Lock the in- and out-point so they can't be moved by accident (L)", self.toggle_trim_lock, 56)
         self.lock_btn.setCheckable(True)
         h.addStretch()
-        self.overlay_cb = QCheckBox("Comments on video")
-        self.overlay_cb.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        self.overlay_cb.toggled.connect(self._overlay_toggled)
-        h.addWidget(self.overlay_cb)
-        style = QToolButton()
-        style.setText("Look …")
-        style.setToolTip("Size and look of the comments on the video")
-        style.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        style.clicked.connect(lambda: OverlayDialog(self).exec())
-        h.addWidget(style)
-        h.addSpacing(10)
         self.rate = QComboBox()
         for r in (0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0):
             self.rate.addItem(f"{r:g}×", r)
@@ -366,21 +380,6 @@ class MainWindow(QMainWindow):
         self.rate.currentIndexChanged.connect(lambda _: self.player.setPlaybackRate(self.rate.currentData()))
         self.rate.setToolTip("Playback speed")
         h.addWidget(self.rate)
-        vol = QSlider(Qt.Orientation.Horizontal)
-        vol.setRange(0, 100)
-        vol.setValue(int(self.audio.volume() * 100))
-        vol.setFixedWidth(90)
-        vol.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        vol.setToolTip("Volume")
-        vol.valueChanged.connect(self._volume)
-        h.addWidget(QLabel("🔊"))
-        h.addWidget(vol)
-        export = QPushButton("Export …")
-        export.setObjectName("primary")
-        export.setFocusPolicy(Qt.FocusPolicy.NoFocus)
-        export.clicked.connect(self.export)
-        h.addSpacing(8)
-        h.addWidget(export)
         return bar
 
     def _build_menus(self):
@@ -397,11 +396,11 @@ class MainWindow(QMainWindow):
 
         f = mb.addMenu("&File")
         act(f, "New project", self.new_project, "Ctrl+N")
-        act(f, "Open …", self.open_dialog, "Ctrl+O")
+        self.open_act = act(f, "Open …", self.open_dialog, "Ctrl+O")
         self.recent_menu = f.addMenu("Open recent")
         act(f, "Open Q-Recorder recording …", self.open_qrecorder_dialog, "Ctrl+Shift+O")
         f.addSeparator()
-        act(f, "Save", self.save, "Ctrl+S")
+        self.save_act = act(f, "Save", self.save, "Ctrl+S")
         act(f, "Save as …", self.save_as, "Ctrl+Shift+S")
         act(f, "Save as folder with video …", self.save_as_folder)
         f.addSeparator()
@@ -439,7 +438,35 @@ class MainWindow(QMainWindow):
         act(p, "Set in-point  (I)", self.set_in)
         act(p, "Set out-point  (O)", self.set_out)
         act(p, "Clear trim", self.clear_trim)
+        p.addSeparator()
+        self.mute_act = act(p, "Mute  (M)", lambda on: self.audio.setMuted(on), checkable=True)
         act(p, "Lock / unlock in and out  (L)", self.toggle_trim_lock)
+
+        # Toolbar
+        from PyQt6.QtWidgets import QToolBar
+        tb = QToolBar("Toolbar", self)
+        tb.setObjectName("toolbar")
+        tb.setMovable(False)
+        tb.setFloatable(False)
+        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextOnly)
+        tb.addAction(self.open_act)
+        tb.addAction(self.save_act)
+        tb.addSeparator()
+        tb.addAction(self.overlay_act)
+        look = QAction("Look …", self)
+        look.setToolTip("Size and look of the comments on the video")
+        look.triggered.connect(lambda: OverlayDialog(self).exec())
+        tb.addAction(look)
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding, QSizePolicy.Policy.Preferred)
+        tb.addWidget(spacer)
+        export = QPushButton("Export …")
+        export.setObjectName("primary")
+        export.setFocusPolicy(Qt.FocusPolicy.NoFocus)
+        export.setToolTip("Export video and comments (Ctrl+E)")
+        export.clicked.connect(self.export)
+        tb.addWidget(export)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
 
         hm = mb.addMenu("&Help")
         act(hm, "Keyboard shortcuts", self.show_shortcuts)
@@ -458,8 +485,33 @@ class MainWindow(QMainWindow):
         self._time = t
         self._stop_at = None
         if self.project.video_path:
-            self.player.setPosition(int(round(t * 1000)))
+            ms = int(round(t * 1000))
+            if fast:
+                # While dragging: never queue up seeks – ask for the next picture when the last one is shown,
+                # so the video keeps up with the playhead instead of lagging behind.
+                self._seek_target = ms
+                self._pump_seek()
+            else:
+                self._seek_target = None
+                self._seek_busy = True
+                self._seek_fallback.start()
+                self.player.setPosition(ms)
         self._refresh_time()
+
+    def _pump_seek(self):
+        if self._seek_busy or self._seek_target is None:
+            return
+        ms, self._seek_target = self._seek_target, None
+        self._seek_busy = True
+        self._seek_fallback.start()
+        self.player.setPosition(ms)
+
+    def _seek_done(self, *_):
+        if self._seek_busy:
+            self._seek_busy = False
+            self._seek_fallback.stop()
+            if self._seek_target is not None:
+                QTimer.singleShot(0, self._pump_seek)
 
     def skip(self, s: float):
         self.seek(self._time + s)
@@ -635,9 +687,6 @@ class MainWindow(QMainWindow):
         self.list.rebuild()
         n = len(p.comments)
         self.count_label.setText(f"Comments ({n})")
-        self.overlay_cb.blockSignals(True)
-        self.overlay_cb.setChecked(p.overlay_enabled)
-        self.overlay_cb.blockSignals(False)
         self.overlay_act.blockSignals(True)
         self.overlay_act.setChecked(p.overlay_enabled)
         self.overlay_act.blockSignals(False)
@@ -660,10 +709,16 @@ class MainWindow(QMainWindow):
         self._update_recent_list()
 
     def _rebuild_chips(self):
-        key = (tuple((p.id, p.name, p.color, p.show_on_video) for p in self.project.profiles), self.active_profile_id)
-        if key == getattr(self, "_chips_key", None):
+        profiles_key = tuple((p.id, p.name, p.color, p.show_on_video) for p in self.project.profiles)
+        if profiles_key == getattr(self, "_chips_key", None):
+            # Same profiles – only mark the active one (no rebuilding, so nothing moves)
+            for b, p in zip(getattr(self, "_chip_buttons", []), self.project.profiles):
+                b.setStyleSheet(chip_style(p.color, p.id == self.active_profile_id))
+            for a in self.profile_menu.actions():
+                a.setChecked(a.data() == self.active_profile_id)
             return
-        self._chips_key = key
+        self._chips_key = profiles_key
+        self._chip_buttons = []
         while self.chips.count():
             it = self.chips.takeAt(0)
             w = it.widget() if it else None
@@ -688,7 +743,9 @@ class MainWindow(QMainWindow):
             b.setToolTip(tip)
             b.clicked.connect(lambda _=False, pid=p.id: self.set_active_profile(pid))
             self.chips.addWidget(b)
+            self._chip_buttons.append(b)
             a = QAction(icon_dot(p.color), p.name, self.profile_menu)
+            a.setData(p.id)
             a.setCheckable(True)
             a.setChecked(p.id == self.active_profile_id)
             if i < 9:
@@ -697,7 +754,6 @@ class MainWindow(QMainWindow):
             group.addAction(a)
             self.profile_menu.addAction(a)
         self.chips_box.updateGeometry()
-        self.chips_box.setMinimumHeight(self.chips.heightForWidth(max(200, self.chips_box.width())))
 
     def _refresh_time(self):
         p = self.project
@@ -718,8 +774,48 @@ class MainWindow(QMainWindow):
 
     def resizeEvent(self, e):
         super().resizeEvent(e)
-        QTimer.singleShot(0, lambda: self.chips_box.setMinimumHeight(
-            self.chips.heightForWidth(max(200, self.chips_box.width()))))
+        self._layout_changed()
+
+    def moveEvent(self, e):
+        super().moveEvent(e)
+        self._layout_changed()
+
+    # ── Window layout (remembered by the app and stored in the project) ──
+
+    def _layout_changed(self):
+        if hasattr(self, "_layout_timer"):
+            self._layout_timer.start()
+
+    def _save_layout_settings(self):
+        self.settings.setValue("geometry", self.saveGeometry())
+        self.settings.setValue("splitTop", self.top_split.saveState())
+        self.settings.setValue("splitMain", self.main_split.saveState())
+
+    def current_layout(self) -> dict:
+        maximized = self.isMaximized()
+        g = self.normalGeometry() if maximized else self.geometry()
+        return {"window": [g.width(), g.height()], "maximized": maximized,
+                "panels": self.top_split.sizes(), "timeline": self.main_split.sizes()}
+
+    def apply_layout(self, ui: dict | None):
+        """Window and panel sizes saved in a project."""
+        if not ui or self.quiet:
+            return
+        try:
+            if ui.get("maximized"):
+                self.showMaximized()
+            elif ui.get("window"):
+                w, h = (int(v) for v in ui["window"])
+                screen = (self.screen() or QApplication.primaryScreen()).availableGeometry()
+                if self.isMaximized():
+                    self.showNormal()
+                self.resize(max(800, min(w, screen.width())), max(500, min(h, screen.height())))
+            if ui.get("panels"):
+                self.top_split.setSizes([int(v) for v in ui["panels"]])
+            if ui.get("timeline"):
+                self.main_split.setSizes([int(v) for v in ui["timeline"]])
+        except (TypeError, ValueError):
+            pass
 
     # ── Player ────────────────────────────────────────────────────────────────
 
@@ -869,10 +965,6 @@ class MainWindow(QMainWindow):
         dlg.canceled.connect(proc.kill)
         proc.start(ff, args)
 
-    def _volume(self, v):
-        self.audio.setVolume(v / 100)
-        self.settings.setValue("volume", v / 100)
-
     # ── Writing comments ──────────────────────────────────────────────────────
 
     def _input_started(self):
@@ -905,6 +997,10 @@ class MainWindow(QMainWindow):
         border = color.name() if active else color.darker(150).name()
         bg = "#2b2b30" if active else "#252529"
         glow = f"{color.red()},{color.green()},{color.blue()}"
+        key = (color.name(), name, active)
+        if key == getattr(self, "_composer_key", None):
+            return
+        self._composer_key = key
         self.composer.setStyleSheet(
             f"QFrame#composer {{ background:{bg}; border:2px solid {border}; border-radius:10px; }}"
             f"QFrame#composer QLabel, QFrame#composer QCheckBox {{ background:transparent; border:none; }}"
@@ -1062,6 +1158,8 @@ class MainWindow(QMainWindow):
         if project.video_path and os.path.exists(project.video_path):
             self._load_video(project.video_path)
         self.refresh_all()
+        if project.ui:
+            QTimer.singleShot(0, lambda: self.apply_layout(project.ui))
         self._update_title()
 
     def new_project(self):
@@ -1251,6 +1349,7 @@ class MainWindow(QMainWindow):
     def save(self) -> bool:
         if not self.project.path:
             return self.save_as()
+        self.project.ui = self.current_layout()
         try:
             self.project.save(self.project.path)
         except Exception as e:
@@ -1408,6 +1507,7 @@ class MainWindow(QMainWindow):
             ", / .\tOne frame back / forward\n"
             "I / O\tSet in / out point\n"
             "L\tLock / unlock in and out\n"
+            "M\tMute / unmute\n"
             "Home / End\tGo to in / out point\n"
             "Enter\tWrite a new comment\n"
             "Esc\tCancel the comment you are writing\n"
@@ -1464,6 +1564,8 @@ class MainWindow(QMainWindow):
             self.step_frame(-1)
         elif key == K.Key_Period:
             self.step_frame(1)
+        elif key == K.Key_M:
+            self.mute_act.toggle()
         elif key == K.Key_I:
             self.set_in()
         elif key == K.Key_O:
@@ -1498,6 +1600,6 @@ class MainWindow(QMainWindow):
         if not self.confirm_discard():
             e.ignore()
             return
-        self.settings.setValue("geometry", self.saveGeometry())
+        self._save_layout_settings()
         self.player.stop()
         e.accept()

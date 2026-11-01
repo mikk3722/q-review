@@ -34,6 +34,7 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 | , / . | One frame back / forward |
 | I / O | Set in / out point |
 | L | Lock / unlock in and out |
+| M | Mute / unmute |
 | Home / End | Go to in / out point |
 | Enter | Write a new comment (Enter adds it, Shift+Enter = new line, Esc = cancel) |
 | Ctrl+1 … 9 | Choose profile |

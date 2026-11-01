@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 – not released yet
+- The window and panel sizes stay put (switching profile no longer moves them) and are remembered between
+  starts; a saved project also remembers its window and panel sizes.
+- Toolbar at the top: Open, Save, Comments on video, Look … and Export.
+- No volume slider (more room on small screens) – *Playback → Mute* or M.
+- The video follows the playhead closely while dragging it in the timeline and ends exactly where you let go.
+
 ## 0.2.3 – 2026-11-01
 - The Windows version is signed (Azure Artifact Signing, "Mikkel Peter Larsen"), so Smart App Control
   lets it start. SmartScreen may still warn on the first downloads until the signature has built up reputation.

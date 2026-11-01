@@ -18,6 +18,10 @@ QPushButton:pressed, QToolButton:pressed { background:#2c2c2e; }
 QPushButton:disabled, QToolButton:disabled { color:#636366; }
 QPushButton#primary { background:#0a84ff; border-color:#0a84ff; font-weight:600; }
 QPushButton#primary:hover { background:#409cff; }
+QToolBar#toolbar { background:#232326; border:none; border-bottom:1px solid #000; padding:4px 8px; spacing:6px; }
+QToolBar#toolbar QToolButton { padding:4px 12px; }
+QToolBar#toolbar QToolButton:checked { background:rgba(10,132,255,0.25); border-color:#0a84ff; }
+QToolBar#toolbar::separator { background:#3a3a3c; width:1px; margin:4px 6px; }
 QFrame#transport { background:#232326; border-top:1px solid #000; }
 QWidget#welcome { background:#111113; }
 QSplitter::handle { background:#000; }

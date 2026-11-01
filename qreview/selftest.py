@@ -113,13 +113,23 @@ def _run(app, out_dir, work):
     win.clear_trim()
     check("locked trim can't move", p.trim_locked and abs(p.trim_in - 0.5) < 0.01)
 
-    # Save / open
+    # Save / open (with the window layout)
     proj_path = os.path.join(work, "Test.qreview")
+    p.ui = win.current_layout()
+    check("window layout captured", len(p.ui.get("panels", [])) == 2 and len(p.ui.get("timeline", [])) == 2, str(p.ui))
     p.save(proj_path)
     q = Project.load(proj_path)
     check("save and reopen", len(q.comments) == 4 and q.comments[2].x == 0.62 and abs(q.trim_in - 0.5) < 0.01
-          and q.video_path == video and q.trim_locked)
+          and q.video_path == video and q.trim_locked and q.ui == p.ui)
     shutil.copy(proj_path, os.path.join(out_dir, "Test.qreview"))
+
+    # Scrubbing: many fast seeks, the picture ends on the last position
+    for i in range(30):
+        win.seek(1.0 + i * 0.1, fast=True)
+    win.seek(4.2)
+    wait(app, 2.0, lambda: not win._seek_busy)
+    check("scrubbing ends on the playhead", abs(win.player.position() / 1000 - 4.2) < 0.15 and win._seek_target is None,
+          f"player at {win.player.position() / 1000:.2f}")
 
     # Screenshot with the bubbles
     win.seek(2.7)
