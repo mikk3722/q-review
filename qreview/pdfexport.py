@@ -254,7 +254,7 @@ def _column_widths(project, items, cols, t, dpi: float, page_width: float) -> di
     mono.setFamilies(["Menlo", "Consolas", "Courier New"])
     mono.setStyleHint(QFont.StyleHint.Monospace)
     fm = {"base": QFontMetricsF(base, device), "bold": QFontMetricsF(bold, device), "mono": QFontMetricsF(mono, device)}
-    pad = 10 + dpi * 0.05                           # cell padding + a little air
+    pad = dpi * 0.12                                # cell padding + air (about 3 mm)
     widths = {}
     for key, _on, label in cols:
         if key == "comment":
@@ -275,7 +275,8 @@ def _column_widths(project, items, cols, t, dpi: float, page_width: float) -> di
                 w = max(w, fm["base"].horizontalAdvance(c.author or ""))
             elif key == "onvideo":
                 w = max(w, fm["base"].horizontalAdvance("✓"))
-        widths[key] = w + pad + 1
+        # +15 %: text in the PDF is set a little wider than on screen
+        widths[key] = w * 1.15 + pad
     limit = page_width * 0.6
     total = sum(widths.values())
     if total > limit > 0:
