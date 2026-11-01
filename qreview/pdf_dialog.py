@@ -38,18 +38,41 @@ def insert_button(target, parent) -> QToolButton:
     """A small ＋ button that inserts a placeholder at the cursor in a QLineEdit."""
     b = QToolButton(parent)
     b.setText("＋")
-    b.setToolTip("Insert page number, date, project name …")
+    b.setToolTip("Insert page number, date, project name … (or right-click in the field)")
     b.setPopupMode(QToolButton.ToolButtonPopupMode.InstantPopup)
     m = QMenu(b)
+    _fill_insert_menu(m, lambda tok: (target.insert(tok), target.setFocus()))
+    b.setMenu(m)
+    add_insert_on_right_click(target)
+    return b
+
+
+def _fill_insert_menu(menu: QMenu, insert):
     for label, token in INSERTS:
         if label is None:
-            m.addSeparator()
+            menu.addSeparator()
             continue
-        a = QAction(label, m)
-        a.triggered.connect(lambda _=False, tok=token: (target.insert(tok), target.setFocus()))
-        m.addAction(a)
-    b.setMenu(m)
-    return b
+        a = QAction(label, menu)
+        a.triggered.connect(lambda _=False, tok=token: insert(tok))
+        menu.addAction(a)
+
+
+def add_insert_on_right_click(edit):
+    """Right-click in the field: 'Insert …' (page number, date, project …) above the usual Cut/Copy/Paste."""
+    edit.setContextMenuPolicy(Qt.ContextMenuPolicy.CustomContextMenu)
+
+    def show(pos):
+        menu = edit.createStandardContextMenu()
+        sub = QMenu("Insert", menu)
+        insert = (lambda tok: edit.insertPlainText(tok)) if isinstance(edit, QPlainTextEdit) else \
+            (lambda tok: edit.insert(tok))
+        _fill_insert_menu(sub, lambda tok: (insert(tok), edit.setFocus()))
+        first = menu.actions()[0] if menu.actions() else None
+        menu.insertMenu(first, sub)
+        menu.insertSeparator(first)
+        menu.exec(edit.mapToGlobal(pos))
+        menu.deleteLater()
+    edit.customContextMenuRequested.connect(show)
 
 
 def section(title: str) -> tuple[QGroupBox, QVBoxLayout]:
@@ -133,7 +156,9 @@ class PdfLayoutDialog(QDialog):
         lay.addLayout(g)
         self.note = QPlainTextEdit()
         self.note.setFixedHeight(58)
-        self.note.setPlaceholderText("A note under the title (optional), e.g. Dress rehearsal 3 – Bellevue Teatret")
+        self.note.setPlaceholderText("A note under the title (optional), e.g. Dress rehearsal 3 – Bellevue Teatret.\n"
+                                     "Right-click to insert date, project name …")
+        add_insert_on_right_click(self.note)
         lay.addWidget(self.note)
         self.info = QCheckBox("Show video, trim, date and number of comments")
         self.summary = QCheckBox("Show how many comments each role has")
