@@ -1,0 +1,43 @@
+20:44:43  Start – C:\Users\runneradmin\AppData\Local\Programs\Q-Review-test\Q-Review.exe --selftest installed-selftest
+20:44:43  Python 3.11.9 · Windows-10-10.0.26100-SP0 · machine AMD64 · frozen=True
+20:44:43  Qt 6.12.0 · PyQt 6.12.0
+20:44:43  Multimedia plugins: ['ffmpegmediaplugin.dll', 'windowsmediaplugin.dll']
+20:44:43  Q-Review 0.2.6
+20:44:43  Qt platform: offscreen
+20:44:44  Qt: Using Qt multimedia with FFmpeg version 9.0.1 LGPL version 2.1 or later
+20:44:44  Qt: QFontDatabase: Cannot find font directory C:/Users/runneradmin/AppData/Local/Programs/Q-Review-test/_internal/PyQt6/Qt6/lib/fonts.
+Note that Qt no longer ships fonts. Deploy some (from https://dejavu-fonts.github.io/ for example) or switch to fontconfig.
+20:44:44  Qt: This plugin does not support propagateSizeHints()
+20:44:44  Qt: This plugin does not support propagateSizeHints()
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:45  Qt: class QRhi *__cdecl `anonymous-namespace'::ThreadLocalRhiHolder::ensureRhi(enum QRhi::Implementation) : No RHI backend. Using CPU conversion.
+20:44:46  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:48  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:51  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:51  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:57  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::VideoRenderer::unnamed
+20:44:57  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::AudioRenderer::unnamed
+20:44:57  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:44:57  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:44:57  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::Demuxer::unnamed
+20:44:57  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:57  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:44:58  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::VideoRenderer::unnamed
+20:44:58  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::AudioRenderer::unnamed
+20:44:58  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:44:58  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:44:58  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::Demuxer::unnamed
+20:44:58  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder

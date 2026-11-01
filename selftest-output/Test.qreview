@@ -1,0 +1,118 @@
+{
+  "app": "Q-Review",
+  "version": 1,
+  "saved": "2026-11-01T20:40:35",
+  "video": {
+    "path": "C:\\Users\\RUNNER~1\\AppData\\Local\\Temp\\qreview-selftest-yu67khfh\\Q-Recorder 2026-10-24 20-00-00.mov",
+    "name": "Q-Recorder 2026-10-24 20-00-00.mov",
+    "relative": "Q-Recorder 2026-10-24 20-00-00.mov"
+  },
+  "trim": {
+    "in": 0.5,
+    "out": 10.0,
+    "locked": true
+  },
+  "overlayEnabled": true,
+  "defaultDuration": 5.0,
+  "layout": {
+    "window": [
+      1400,
+      860
+    ],
+    "maximized": false,
+    "panels": [
+      380,
+      1018
+    ],
+    "timeline": [
+      556,
+      230
+    ]
+  },
+  "style": {
+    "fontScale": 1.0,
+    "maxStacked": 4,
+    "showName": true,
+    "opacity": 0.72
+  },
+  "profiles": [
+    {
+      "id": "426fbf0fb120",
+      "name": "Notes",
+      "color": "#E5484D",
+      "showOnVideo": true
+    },
+    {
+      "id": "aa658b0f0a31",
+      "name": "Lighting",
+      "color": "#F5A524",
+      "showOnVideo": true
+    },
+    {
+      "id": "2bd129183645",
+      "name": "Sound",
+      "color": "#3E9BFF",
+      "showOnVideo": true
+    },
+    {
+      "id": "551750226185",
+      "name": "Stage manager",
+      "color": "#46A758",
+      "showOnVideo": true
+    }
+  ],
+  "comments": [
+    {
+      "id": "b95f3b847174",
+      "profileId": "426fbf0fb120",
+      "text": "Light cue 12 comes too early",
+      "start": 1.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:01.000",
+      "onVideo": true,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-11-01T20:40:35"
+    },
+    {
+      "id": "f76d96ccd401",
+      "profileId": "2bd129183645",
+      "text": "The music fade should be slower – try 5 seconds instead of 3, and keep the vocal on top",
+      "start": 2.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:02.000",
+      "onVideo": true,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-11-01T20:40:35"
+    },
+    {
+      "id": "13f2db252a91",
+      "profileId": "aa658b0f0a31",
+      "text": "Placed by hand, top right",
+      "start": 2.5,
+      "duration": 5.0,
+      "recordingTime": "00:00:02.500",
+      "onVideo": true,
+      "x": 0.62,
+      "y": 0.08,
+      "author": "",
+      "created": "2026-11-01T20:40:35"
+    },
+    {
+      "id": "c437dbd7ba75",
+      "profileId": "551750226185",
+      "text": "Not on video",
+      "start": 3.0,
+      "duration": 5.0,
+      "recordingTime": "00:00:03.000",
+      "onVideo": false,
+      "x": null,
+      "y": null,
+      "author": "",
+      "created": "2026-11-01T20:40:35"
+    }
+  ]
+}

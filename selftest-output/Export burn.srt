@@ -1,0 +1,16 @@
+1
+00:00:00,500 --> 00:00:05,500
+[Notes] Light cue 12 comes too early
+
+2
+00:00:01,500 --> 00:00:06,500
+[Sound] The music fade should be slower – try 5 seconds instead of 3, and keep the vocal on top
+
+3
+00:00:02,000 --> 00:00:07,000
+[Lighting] Placed by hand, top right
+
+4
+00:00:02,500 --> 00:00:07,500
+[Stage manager] Not on video
+
