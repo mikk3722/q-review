@@ -50,6 +50,9 @@ def log(msg: str):
 def show_fatal(text: str):
     """Shows the error even when Qt itself could not start."""
     full = f"Q-Review could not start.\n\n{text}\n\nLog: {LOG_PATH}"
+    if "--selftest" in sys.argv:   # no one to click a dialog away
+        print(full, file=sys.stderr, flush=True)
+        return
     try:
         from PyQt6.QtWidgets import QApplication, QMessageBox
         if QApplication.instance() is not None:

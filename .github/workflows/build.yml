@@ -171,6 +171,10 @@ jobs:
           done
           R="$RUNNER_TEMP/results"; rm -rf "$R"; mkdir -p "$R"; cd "$R"
           cp -r "$GITHUB_WORKSPACE/selftest-output" "$GITHUB_WORKSPACE/exe-selftest" . 2>/dev/null || true
+          # The app's own log (start-up errors, Qt messages)
+          mkdir -p app-log
+          cp "$HOME/Library/Logs/Q-Review/"*.log app-log/ 2>/dev/null || true
+          [ -n "$LOCALAPPDATA" ] && cp "$(cygpath "$LOCALAPPDATA" 2>/dev/null || echo "$LOCALAPPDATA")/Q-Review/"*.log app-log/ 2>/dev/null || true
           find . -name "*.mp4" -delete
           git init -q -b results
           git -c user.name=github-actions -c user.email=actions@github.com add -A
@@ -363,6 +367,10 @@ jobs:
           done
           R="$RUNNER_TEMP/results"; rm -rf "$R"; mkdir -p "$R"; cd "$R"
           cp -r "$GITHUB_WORKSPACE/selftest-output" "$GITHUB_WORKSPACE/exe-selftest" . 2>/dev/null || true
+          # The app's own log (start-up errors, Qt messages)
+          mkdir -p app-log
+          cp "$HOME/Library/Logs/Q-Review/"*.log app-log/ 2>/dev/null || true
+          [ -n "$LOCALAPPDATA" ] && cp "$(cygpath "$LOCALAPPDATA" 2>/dev/null || echo "$LOCALAPPDATA")/Q-Review/"*.log app-log/ 2>/dev/null || true
           find . -name "*.mp4" -delete
           git init -q -b results
           git -c user.name=github-actions -c user.email=actions@github.com add -A
