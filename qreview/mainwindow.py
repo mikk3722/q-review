@@ -504,6 +504,7 @@ class MainWindow(QMainWindow):
                 self._seek_target = None
                 self._seek_busy = True
                 self._seek_fallback.start()
+                self._last_seek_ms = ms
                 self.player.setPosition(ms)
         self._refresh_time()
 
@@ -513,6 +514,8 @@ class MainWindow(QMainWindow):
         ms, self._seek_target = self._seek_target, None
         self._seek_busy = True
         self._seek_fallback.start()
+        self._last_seek_ms = ms
+        self._seek_count = getattr(self, "_seek_count", 0) + 1
         self.player.setPosition(ms)
 
     def _seek_done(self, *_):

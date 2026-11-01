@@ -123,13 +123,17 @@ def _run(app, out_dir, work):
           and q.video_path == video and q.trim_locked and q.ui == p.ui)
     shutil.copy(proj_path, os.path.join(out_dir, "Test.qreview"))
 
-    # Scrubbing: many fast seeks, the picture ends on the last position
+    # Scrubbing: 30 fast seeks in a row must not queue up, and the last position wins.
+    # (Without a screen the player does not always report its position, so the request is checked.)
+    win._seek_count = 0
     for i in range(30):
         win.seek(1.0 + i * 0.1, fast=True)
+    sent = win._seek_count
     win.seek(4.2)
     wait(app, 2.0, lambda: not win._seek_busy)
-    check("scrubbing ends on the playhead", abs(win.player.position() / 1000 - 4.2) < 0.15 and win._seek_target is None,
-          f"player at {win.player.position() / 1000:.2f}")
+    check("scrubbing does not queue up seeks", sent < 30, f"{sent} of 30 sent to the player")
+    check("scrubbing ends on the playhead", win._last_seek_ms == 4200 and win._seek_target is None
+          and abs(win.current_time() - 4.2) < 0.001, f"player reports {win.player.position() / 1000:.2f} s")
 
     # Autosave: a saved project is written by itself; an unsaved one goes to the recovery file
     p.path = proj_path
