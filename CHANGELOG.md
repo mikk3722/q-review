@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.6 – not released yet
+## 0.2.6 – 2026-11-01
 - PDF layout (*Export → Edit layout …*) with a live preview: columns (on/off, order, own headings),
   title, subtitle and note, info line, summary per role, one section per role, role colour as stripe and/or
   coloured name, table heading colour, paper size, orientation, text size, margins, header and footer
