@@ -96,11 +96,65 @@ jobs:
           Get-Content exe-selftest\selftest.txt
           if ($p.ExitCode -ne 0) { throw "Self-test of the built app failed ($($p.ExitCode))" }
 
-      - name: Create ZIP
+      - name: Create ZIP (portable)
         run: |
           Compress-Archive `
             -Path "dist\Q-Review" `
             -DestinationPath "Q-Review-windows.zip"
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          choco install innosetup -y --no-progress | Out-Null
+          $iscc = Get-ChildItem "C:\Program Files (x86)\Inno Setup *\ISCC.exe", "C:\Program Files\Inno Setup *\ISCC.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $iscc) { throw "Inno Setup (ISCC.exe) was not found" }
+          $ver = python -c "import qreview; print(qreview.__version__)"
+          & $iscc.FullName "/DMyAppVersion=$ver" "installer\q-review.iss"
+          if ($LASTEXITCODE -ne 0) { throw "The installer could not be built" }
+          Get-ChildItem installer-out
+
+      - name: Sign installer (Azure Artifact Signing)
+        if: env.AZURE_CLIENT_ID != ''
+        uses: azure/artifact-signing-action@v2
+        with:
+          azure-tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          azure-client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          azure-client-secret: ${{ secrets.AZURE_CLIENT_SECRET }}
+          endpoint: ${{ secrets.AZURE_SIGNING_ENDPOINT }}
+          signing-account-name: ${{ secrets.AZURE_SIGNING_ACCOUNT }}
+          certificate-profile-name: ${{ secrets.AZURE_CERT_PROFILE }}
+          files-folder: installer-out
+          files-folder-filter: exe
+          file-digest: SHA256
+          timestamp-rfc3161: http://timestamp.acs.microsoft.com
+          timestamp-digest: SHA256
+
+      - name: Test the installer (install, run, file association, uninstall)
+        timeout-minutes: 10
+        shell: pwsh
+        run: |
+          $setup = "installer-out\Q-Review-Setup.exe"
+          $sig = Get-AuthenticodeSignature $setup
+          if ($env:AZURE_CLIENT_ID -and $sig.Status -ne "Valid") { throw "The installer is not signed correctly: $($sig.Status)" }
+          if ($sig.Status -eq "Valid") { Write-Output "::notice::Installer signed by $($sig.SignerCertificate.Subject)" }
+          $dir = Join-Path $env:LOCALAPPDATA "Programs\Q-Review-test"
+          $p = Start-Process $setup -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART","/CURRENTUSER","/DIR=`"$dir`"" -Wait -PassThru
+          if ($p.ExitCode -ne 0) { throw "Install failed ($($p.ExitCode))" }
+          if (-not (Test-Path "$dir\Q-Review.exe")) { throw "Q-Review.exe was not installed" }
+          $assoc = (Get-ItemProperty "HKCU:\Software\Classes\QReview.Project\shell\open\command").'(default)'
+          Write-Output "Open command: $assoc"
+          if ($assoc -notlike "*Q-Review.exe*") { throw ".qreview is not associated with Q-Review" }
+          $lnk = Get-ChildItem "$env:APPDATA\Microsoft\Windows\Start Menu\Programs" -Filter "Q-Review.lnk" -Recurse
+          if (-not $lnk) { throw "No Start menu shortcut" }
+          $env:QT_QPA_PLATFORM = "offscreen"
+          $t = Start-Process "$dir\Q-Review.exe" -ArgumentList "--selftest","installed-selftest" -Wait -PassThru
+          Get-Content installed-selftest\selftest.txt | Select-Object -Last 1
+          if ($t.ExitCode -ne 0) { throw "The installed app failed its self-test" }
+          $u = Start-Process "$dir\unins000.exe" -ArgumentList "/VERYSILENT","/SUPPRESSMSGBOXES","/NORESTART" -Wait -PassThru
+          Start-Sleep -Seconds 3
+          if (Test-Path "$dir\Q-Review.exe") { throw "Uninstall left the app behind" }
+          if (Test-Path "HKCU:\Software\Classes\QReview.Project") { throw "Uninstall left the file association behind" }
+          Write-Output "::notice::Installer: install, Start menu, .qreview association, self-test and uninstall all OK"
 
       - name: Publish self-test results (branch selftest-OS)
         if: always()
@@ -128,7 +182,9 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: Q-Review-windows
-          path: Q-Review-windows.zip
+          path: |
+            Q-Review-windows.zip
+            installer-out/Q-Review-Setup.exe
 
   build-macos:
     runs-on: macos-latest
@@ -339,8 +395,10 @@ jobs:
 
             | Platform | Download |
             |---|---|
-            | Windows | Q-Review-windows.zip – unzip and run Q-Review.exe |
+            | Windows (installer) | Q-Review-Setup.exe – installs Q-Review with Start menu entry and uninstaller |
+            | Windows (portable) | Q-Review-windows.zip – unzip and run Q-Review.exe, no installation |
             | macOS | Q-Review-macos.dmg |
           files: |
             Q-Review-windows/*.zip
+            Q-Review-windows/**/*.exe
             Q-Review-macos/*.dmg

@@ -56,7 +56,15 @@ Comments on video – the review part of Q-Recorder as a stand-alone app for **W
 
 ## Download
 
-See [Releases](../../releases). Windows: unzip `Q-Review-windows.zip` and run `Q-Review.exe` (FFmpeg is included).
+See [Releases](../../releases).
+
+- **Windows:** run `Q-Review-Setup.exe`. It asks whether to install for all users (Program Files, needs admin)
+  or only for you, adds Q-Review to the Start menu, opens `.qreview` projects on double-click and can be removed
+  under *Settings → Apps*. Running a newer setup updates the installed version.
+  `Q-Review-windows.zip` is the portable version: unzip and run `Q-Review.exe`, nothing is installed.
+- **macOS:** open `Q-Review-macos.dmg` and drag Q-Review to Applications.
+
+FFmpeg is included in both.
 
 ## Windows: "Windows protected your PC"
 
@@ -104,6 +112,7 @@ python q_review.py --selftest out   # automatic test: makes a test video, commen
 
 ```
 q_review.py              ← start
+installer/q-review.iss    ← Windows installer (Inno Setup)
 qreview/model.py         ← project, profiles, comments, .qreview files, Q-Recorder import
 qreview/mainwindow.py    ← main window, player, menus, keys
 qreview/panels.py        ← left side: profiles, writing comments, list, selected comment

@@ -1,6 +1,9 @@
 # Changelog
 
 ## 0.2.4 – 2026-11-01
+- Windows installer (`Q-Review-Setup.exe`, signed): installs for all users or only you, Start menu entry,
+  optional desktop icon, double-click on a `.qreview` project opens it, uninstall under *Settings → Apps*.
+  The ZIP stays as a portable version.
 - Autosave: a saved project is saved by itself a moment after each change (*File → Autosave*, on by default).
   Unsaved work is kept in a recovery file, and Q-Review offers to restore it if it was not closed properly.
 - The window and panel sizes stay put (switching profile no longer moves them) and are remembered between
