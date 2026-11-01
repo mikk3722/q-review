@@ -1,0 +1,42 @@
+20:41:58  Start – dist/Q-Review.app/Contents/MacOS/Q-Review --selftest /Users/runner/work/q-review/q-review/exe-selftest
+20:41:58  Python 3.11.9 · macOS-26.6.2-arm64-arm-64bit · machine arm64 · frozen=True
+20:41:58  Qt 6.12.0 · PyQt 6.12.0
+20:41:58  Multimedia plugins: ['libffmpegmediaplugin.dylib', 'libdarwinmediaplugin.dylib']
+20:41:58  Q-Review 0.2.6
+20:41:58  Qt platform: offscreen
+20:42:00  Qt: Using Qt multimedia with FFmpeg version 9.0.1 LGPL version 2.1 or later
+20:42:01  Qt: Populating font family aliases took 76 ms. Replace uses of missing font family "Sans Serif" with one that exists to avoid this cost. 
+20:42:01  Qt: This plugin does not support propagateSizeHints()
+20:42:01  Qt: This plugin does not support propagateSizeHints()
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:01  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:02  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:02  Qt: QRhi *(anonymous namespace)::ThreadLocalRhiHolder::ensureRhi(QRhi::Implementation) : No RHI backend. Using CPU conversion.
+20:42:05  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:07  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:07  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:12  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::VideoRenderer::unnamed
+20:42:12  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::AudioRenderer::unnamed
+20:42:12  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:42:12  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:42:12  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::Demuxer::unnamed
+20:42:12  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:12  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
+20:42:13  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::VideoRenderer::unnamed
+20:42:13  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::AudioRenderer::unnamed
+20:42:13  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:42:13  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::StreamDecoder::unnamed
+20:42:13  Qt: QObject::disconnect: wildcard call disconnects from destroyed signal of QFFmpeg::Demuxer::unnamed
+20:42:13  Qt: QWidget::setWindowModified: The window title does not contain a '[*]' placeholder
